@@ -1,0 +1,10 @@
+patterns:
+  - name: "direct_override"
+    regex: "ignore previous|disregard instruction|forget context"
+    severity: "CRITICAL"
+  - name: "jailbreak_dan"
+    regex: "DAN|Do Anything Now"
+    severity: "HIGH"
+  - name: "sql_injection"
+    regex: "union select|drop table"
+    severity: "HIGH"
