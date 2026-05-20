@@ -7,7 +7,7 @@ sdk: docker
 pinned: false
 ---
 
-# Agent Shield: Hybrid Web Application Firewall & Prompt Injection Guard
+# Agent Shield: protects your AI
 
 [![Application Runtime](https://img.shields.io/badge/HF%20Spaces-Active-blue?style=flat-square&logo=huggingface)](https://huggingface.co/spaces/Sandeep120205/agent-shield)
 [![API Status](https://img.shields.io/badge/API-Live-success?style=flat-square)](https://Sandeep120205-agent-shield.hf.space)
@@ -20,18 +20,11 @@ Agent Shield is an advanced, production-hardened security engine built to stop m
 
 Instead of relying on a single checkpoint, incoming strings must pass through a strict four-stage security waterfall:
 
-```mermaid
-graph TD
-    A[Incoming User Message] --> B[Layer 0: Normalization & Cleaning]
-    B --> C[Layer 1: High-Speed Signature Filter]
-    C --> D[Layer 2: Deep Learning ML Classifier]
-    D --> E[Layer 3: Policy & Privacy Guard]
-    
-    style A fill:#f9f9f9,stroke:#333,stroke-width:2px
-    style B fill:#e1f5fe,stroke:#03a9f4,stroke-width:2px
-    style C fill:#fff3e0,stroke:#ff9800,stroke-width:2px
-    style D fill:#ede7f6,stroke:#673ab7,stroke-width:2px
-    style E fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
+flowchart TD
+    A[Incoming Request Vector] --> B[Layer 0: Normalization & Canonicalization]
+    B --> C[Layer 1: Deterministic Signature Filter]
+    C --> D[Layer 2: Cognitive ML Classifier]
+    D --> E[Layer 3: Contextual Policy & PII Guard]
 
 
 | Security Layer | Component Name | Technical Function | Runtime Cost |
