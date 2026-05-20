@@ -24,13 +24,23 @@ Instead of relying on a single checkpoint, incoming strings must pass through a 
 
 flowchart TD
 
-    A[Incoming Request Vector] --> B(Layer 0: Canonicalization)
+    subgraph INPUT [User Input Space]
+        A[Incoming Request Vector]
+    end
 
-    B --> C(Layer 1: Deterministic Filter)
+    subgraph PIPELINE [Cascading Verification Engine]
+        B(Layer 0: Canonicalization) -->|Normalized String| C(Layer 1: Deterministic Filter)
+        C -->|Signature Passed| D(Layer 2: Machine Learning Classifier)
+        D -->|Semantic Verified| E(Layer 3: Privacy & Context Guard)
+    end
 
-    C --> D(Layer 2: Machine Learning Classifier)
-    
-    D --> E(Layer 3: Privacy & Context Guard)
+    subgraph SYSTEM [Downstream System Boundary]
+        F[Secure Downstream Execution / LLM]
+    end
+
+    A --> B
+    E -->|Clean Output Passed| F
+
 
 
 | Security Layer | Component Name | Technical Function | Runtime Cost |
@@ -53,10 +63,14 @@ flowchart TD
 
 Clone the repository and set up a fresh Python virtual environment:
 
-git clone https://github.com/Sandeep-int/agent-shield.git
+git clone [https://github.com/Sandeep-int/agent-shield.git](https://github.com/Sandeep-int/agent-shield.git)
+
 cd agent-shield
+
 python3 -m venv venv
+
 source venv/bin/activate
+
 pip install -r requirements.txt
 
 
@@ -79,18 +93,31 @@ curl -X POST "[http://127.0.0.1:8000/v1/check](http://127.0.0.1:8000/v1/check)" 
 **Response Received:**
 
 {
+ 
   "verdict": "BLOCK",
+ 
   "confidence": 0.99,
+ 
   "layer_hit": "L1_VIGIL_SIGNATURE",
+ 
   "latency_ms": 4.53,
+ 
   "details": {
+ 
     "hits": [
+ 
       {
+ 
         "name": "sql_operator_bypass",
+ 
         "severity": "CRITICAL"
+ 
       }
+ 
     ]
+ 
   }
+
 }
 
 
