@@ -22,7 +22,7 @@ Built for enterprises that can't afford false negatives. Four security layers. 8
 
 ---
 
-## 🏗️ Four-Layer Waterfall Architecture
+##  Four-Layer Waterfall Architecture
 
 Request validation is **strict and sequential**. If any layer fails, the request is dropped. No exceptions.
 
@@ -137,7 +137,7 @@ Opens at `http://localhost:7860`
 
 ---
 
-## 📊 Live Deployment
+##  Live Deployment
 
 | Component | URL | Status |
 |---|---|---|
@@ -147,7 +147,7 @@ Opens at `http://localhost:7860`
 
 ---
 
-## 🏢 Architecture & Code Layout
+##  Architecture & Code Layout
 
 ```
 agent-shield/
@@ -191,7 +191,7 @@ command_injection:
 
 ---
 
-## 📈 Performance & Metrics
+##  Performance & Metrics
 
 ### Latency Breakdown (Local)
 
@@ -211,7 +211,7 @@ command_injection:
 
 ---
 
-## 🔧 Configuration
+##  Configuration
 
 ### Environment Variables
 
@@ -249,7 +249,7 @@ Restart the API to reload patterns.
 
 ---
 
-## 🧪 Testing
+##  Testing
 
 ### Unit Tests
 
@@ -273,7 +273,7 @@ python3 tests/test_performance.py
 
 ---
 
-## 🛣️ Roadmap
+## Roadmap
 
 ### Phase 1 (Current) ✅
 - [x] Multi-layer architecture (L0–L3)
@@ -329,7 +329,7 @@ Agent Shield is **open source** and contributions are welcome.
 
 ## 🔐 Security Disclosure
 
-Found a bypass? Do **not** open a public issue. Email `security@agent-shield.dev` with:
+Found a bypass? Do **not** open a public issue. Email `sandeep.int.2005@gmail.com` with:
 1. Payload that bypasses all four layers
 2. Expected vs. actual behavior
 3. Reproduction steps
@@ -341,23 +341,6 @@ We'll acknowledge within 48 hours and prioritize a patch.
 ## 📄 License
 
 MIT License — See [LICENSE](LICENSE) for details.
-
----
-
-## 💬 Community
-
-- **Issues & Bugs:** [GitHub Issues](https://github.com/Sandeep-int/agent-shield/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/Sandeep-int/agent-shield/discussions)
-- **Security:** See above
-
----
-
-## 🎓 Made By
-
-Built by **Sandeep** — Senior Security Engineer (India + Global MSPs)  
-Mentor: Defense-in-depth security architecture, SOC operations, cloud engineering.
-
-**Phase 1 Status:** ✅ Live with 80% accuracy. Phase 2 payload collection starts now.
 
 ---
 
