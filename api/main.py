@@ -11,6 +11,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from detectors.l3_guardrails import run_l3_guardrails
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -70,7 +71,21 @@ class CheckResponse(BaseModel):
 @limiter.limit("30/minute")
 async def check_prompt(request: Request, req: CheckRequest):
     start_time = time.time()
-    target_payload = req.prompt  # Already sanitized via pydantic pre-processor
+    target_payload = req.prompt 
+
+    # --- NEW: INTEGRATED L3 PRE-FLIGHT GUARD ---
+
+    logger.info(f"L3 Pre-flight inspection: {target_payload[:50]}...")
+
+    guard_result = run_l3_guardrails(target_payload, context="input")
+    if not guard_result["passed"]:
+        return CheckResponse(
+            verdict="BLOCK",
+            confidence=1.0,
+            layer_hit="L3_PREFLIGHT_GUARD",
+            latency_ms=(time.time() - start_time) * 1000,
+            details={"reason": guard_result["reason"]}
+        )  # Already sanitized via pydantic pre-processor
 
     # L1: Aggressive Static Engine Verification
     try:

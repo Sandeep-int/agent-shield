@@ -8,18 +8,17 @@ MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file
 
 class BertClassifier:
     def __init__(self):
+        # Point BOTH to the same folder
+        path = "./models/fine_tuned_bert"
         try:
-            self.tokenizer = DistilBertTokenizer.from_pretrained("distilbert-base-uncased")
-            self.model = DistilBertForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
+            self.tokenizer = DistilBertTokenizer.from_pretrained(path)
+            self.model = DistilBertForSequenceClassification.from_pretrained(path)
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             self.model.to(self.device)
             self.model.eval()
         except Exception as e:
-            print(f"Model load error: {e}. Using pretrained distilbert.")
-            self.tokenizer = DistilBertTokenizer.from_pretrained("distilbert-base-uncased")
-            self.model = DistilBertForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
-            self.device = torch.device('cpu')
-            self.model.to(self.device)
+            print(f"Critical load error: {e}")
+            raise e
 
     def classify(self, prompt: str):
         start = time.time()

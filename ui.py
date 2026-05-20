@@ -1,5 +1,6 @@
 import gradio as gr
 import requests
+import datetime
 
 API_URL = "http://127.0.0.1:8000/v1/check"
 
@@ -47,18 +48,27 @@ def check_prompt(prompt):
     try:
         response = requests.post(API_URL, json={"prompt": prompt})
         result = response.json()
-
-        verdict = result["verdict"]
-        layer = result["layer_hit"]
-        confidence = result["confidence"]
-        latency = result["latency_ms"]
-
-        if verdict == "BLOCK":
-            return f"[BLOCKED]\nlayer  : {layer}\nconf   : {confidence:.2f}\nlatency: {latency:.1f}ms"
-        else:
-            return f"[ALLOWED]\nlayer  : {layer}\nlatency: {latency:.1f}ms"
+        
+        # Format the output for the UI
+        verdict = result.get("verdict", "UNKNOWN")
+        layer = result.get("layer_hit", "N/A")
+        conf = result.get("confidence", 0)
+        lat = result.get("latency_ms", 0)
+        
+        display = (f"VERDICT: {verdict}\n"
+                   f"LAYER  : {layer}\n"
+                   f"CONF   : {conf:.2f}\n"
+                   f"LATENCY: {lat:.1f}ms\n\n"
+                   f"--- RAW METADATA ---\n"
+                   f"{result.get('details', 'No details available')}")
+        
+        # LOGGING: Append every test to a local file for your portfolio
+        with open("security_audit.log", "a") as f:
+            f.write(f"[{datetime.datetime.now()}] Input: {prompt} | Verdict: {verdict} | Layer: {layer}\n")
+            
+        return display
     except Exception as e:
-        return f"[ERROR]\n{str(e)}"
+        return f"[SYSTEM ERROR]\n{str(e)}"
 
 demo = gr.Interface(
     fn=check_prompt,
@@ -71,7 +81,7 @@ demo = gr.Interface(
         label="OUTPUT",
         lines=5
     ),
-    title="PROMPT-WALL // LLM SECURITY LAYER",
+    title="Agent-Shield",
     description="[ L0:unicode ] [ L1:regex ] [ L2:bert ] [ L3:guardrails ]",
     css=css
 )
