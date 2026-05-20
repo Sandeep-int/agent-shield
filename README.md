@@ -1,3 +1,12 @@
+---
+title: Agent Shield
+emoji: 🛡️
+colorFrom: blue
+colorTo: gray
+sdk: docker
+pinned: false
+---
+
 # Agent Shield 🛡️
 
 **Protects your AI**
