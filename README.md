@@ -20,7 +20,6 @@ Agent Shield is an advanced, production-hardened security engine built to stop m
 
 Instead of relying on a single checkpoint, incoming strings must pass through a strict four-stage security waterfall:
 
-```mermaid
 graph TD
     A[Incoming Payload Vector] --> B[Layer 0: Normalization & Cleaning]
     B --> C[Layer 1: High-Speed Signature Filter]
@@ -34,6 +33,7 @@ graph TD
     style E fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
 
 
+
 | Security Layer | Component Name | Technical Function | Runtime Cost |
 | :--- | :--- | :--- | :--- |
 | **Layer 0** | `Normalization` | Decodes URL parameters and flattens Unicode homoglyphs to stop obfuscation tricks. | Less than 1ms |
@@ -45,3 +45,65 @@ graph TD
 * **Bypass Elimination:** Mitigates complex logical statements (like `admin' OR '1'='1`) by using flexible tracking boundaries instead of static text keywords.
 * **Fail-Secure System Control:** Built with a strict containment policy. If any security module hits a runtime error or dependency fault, the application automatically blocks the entry stream (`HTTP 500`) to protect downstream assets.
 * **Dynamic Path Resolution:** Uses absolute root-path calculation routines so configuration rules load accurately regardless of where the application container boots from.
+
+### Technical Stack
+
+**Web Framework:** Python 3.14, FastAPI, Pydantic v2
+
+**AI & Machine Learning:** PyTorch, Hugging Face Transformers (DistilBERT Classifier)
+
+**Security & Ops:** Docker, SlowAPI (Rate-Limiter), GitHub Actions
+
+
+### Getting Started (Local Setup)
+
+**1. Installation**
+
+Clone the repository and set up a fresh Python virtual environment:
+
+git clone https://github.com/Sandeep-int/agent-shield.git
+cd agent-shield
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+
+**2. Launching the API Server**
+
+Run the application from the root project directory using Uvicorn:
+
+python3 -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
+
+
+**Testing the API**
+
+You can test the validation speed and defense layers using a simple terminal curl request:
+
+curl -X POST "http://127.0.0.1:8000/v1/check" \
+  -H "Content-Type: application/json" \
+  -d "{\"prompt\": \"admin' OR '1'='1\"}"
+
+
+**Expected Interception Response:**
+
+{
+  "verdict": "BLOCK",
+  "confidence": 0.99,
+  "layer_hit": "L1_VIGIL_SIGNATURE",
+  "latency_ms": 4.53,
+  "details": {
+    "hits": [
+      {
+        "name": "sql_operator_bypass",
+        "severity": "CRITICAL"
+      }
+    ]
+  }
+}
+
+
+**Current Project Roadmap**
+
+**Phase 2 Pipeline (Next Step):** Automate synthetic attack payload data harvesting using automated security frameworks to build a training log bank of 2,500+ verified sample vectors.
+
+**Model Retraining:** Retrain the core DistilBERT engine to target an accuracy threshold of 95%+ with a false-positive rate under 2%.
