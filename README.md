@@ -20,18 +20,18 @@ Agent Shield is an advanced, production-hardened security engine built to stop m
 
 Instead of relying on a single checkpoint, incoming strings must pass through a strict four-stage security waterfall:
 
+```mermaid
 graph TD
-    A[Incoming Payload Vector] --> B[Layer 0: Normalization & Cleaning]
+    A[Incoming User Message] --> B[Layer 0: Normalization & Cleaning]
     B --> C[Layer 1: High-Speed Signature Filter]
-    C --> D[Layer 2: Machine Learning Classifier]
-    D --> E[Layer 3: Contextual Policy & PII Guard]
+    C --> D[Layer 2: Deep Learning ML Classifier]
+    D --> E[Layer 3: Policy & Privacy Guard]
     
     style A fill:#f9f9f9,stroke:#333,stroke-width:2px
     style B fill:#e1f5fe,stroke:#03a9f4,stroke-width:2px
     style C fill:#fff3e0,stroke:#ff9800,stroke-width:2px
     style D fill:#ede7f6,stroke:#673ab7,stroke-width:2px
     style E fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
-
 
 
 | Security Layer | Component Name | Technical Function | Runtime Cost |
@@ -41,10 +41,12 @@ graph TD
 | **Layer 2** | `ML Classifier` | Processes complex semantic patterns using a fine-tuned **DistilBERT** transformer model. | Variable |
 | **Layer 3** | `Contextual Policy` | Enforces structural data restrictions, input format safety bounds, and blocks PII leaks. | Less than 2ms |
 
+
 ### Key Engineering Features
 * **Bypass Elimination:** Mitigates complex logical statements (like `admin' OR '1'='1`) by using flexible tracking boundaries instead of static text keywords.
 * **Fail-Secure System Control:** Built with a strict containment policy. If any security module hits a runtime error or dependency fault, the application automatically blocks the entry stream (`HTTP 500`) to protect downstream assets.
 * **Dynamic Path Resolution:** Uses absolute root-path calculation routines so configuration rules load accurately regardless of where the application container boots from.
+
 
 ### Technical Stack
 
@@ -55,7 +57,7 @@ graph TD
 **Security & Ops:** Docker, SlowAPI (Rate-Limiter), GitHub Actions
 
 
-### Getting Started (Local Setup)
+### Spin Up Agent Shield Locally
 
 **1. Installation**
 
@@ -84,7 +86,7 @@ curl -X POST "http://127.0.0.1:8000/v1/check" \
   -d "{\"prompt\": \"admin' OR '1'='1\"}"
 
 
-**Expected Interception Response:**
+**Response Received:**
 
 {
   "verdict": "BLOCK",
