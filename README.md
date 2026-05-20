@@ -12,8 +12,9 @@ pinned: false
 [![Application Runtime](https://img.shields.io/badge/HF%20Spaces-Active-blue?style=flat-square&logo=huggingface)](https://huggingface.co/spaces/Sandeep120205/agent-shield)
 [![API Status](https://img.shields.io/badge/API-Live-success?style=flat-square)](https://Sandeep120205-agent-shield.hf.space)
 
-Agent Shield is an advanced, production-hardened security engine built to stop malicious inputs, code injections, and AI prompt hijacking before they reach backend applications.
+Agent Shield is a low-latency, multi-layered security gateway engineered to intercept malicious code injections, structural logical bypasses, and adversarial prompt hijacking attempts before they reach downstream Large Language Models (LLMs) and backend databases.
 
+By combining deterministic canonicalization filters with a fine-tuned cognitive neural model, Agent Shield provides robust runtime defense-in-depth without introducing performance bottlenecks.
 ---
 
 ## 🛡️ Multi-Layered Defense Architecture
@@ -21,36 +22,30 @@ Agent Shield is an advanced, production-hardened security engine built to stop m
 Instead of relying on a single checkpoint, incoming strings must pass through a strict four-stage security waterfall:
 
 flowchart TD
-    A[Incoming Request Vector] --> B[Layer 0: Normalization & Canonicalization]
-    B --> C[Layer 1: Deterministic Signature Filter]
-    C --> D[Layer 2: Cognitive ML Classifier]
-    D --> E[Layer 3: Contextual Policy & PII Guard]
+    A[Incoming Request Vector] --> B(Layer 0: Canonicalization)
+
+    B --> C(Layer 1: Deterministic Filter)
+
+    C --> D(Layer 2: Machine Learning Classifier)
+    
+    D --> E(Layer 3: Privacy & Context Guard)
 
 
 | Security Layer | Component Name | Technical Function | Runtime Cost |
 | :--- | :--- | :--- | :--- |
-| **Layer 0** | `Normalization` | Decodes URL parameters and flattens Unicode homoglyphs to stop obfuscation tricks. | Less than 1ms |
-| **Layer 1** | `Signature Filter` | Evaluates token-agnostic regex boundary statements to instantly drop classic exploit logic. | **4.5 ms** |
-| **Layer 2** | `ML Classifier` | Processes complex semantic patterns using a fine-tuned **DistilBERT** transformer model. | Variable |
-| **Layer 3** | `Contextual Policy` | Enforces structural data restrictions, input format safety bounds, and blocks PII leaks. | Less than 2ms |
+| **Layer 0** | `Normalization` | URL decoding and Unicode NFKC flattening to neutralize obfuscation homoglyphs. | < 1.0 ms |
+| **Layer 1** | `Signature Filter` | Scans input against token-agnostic regex boundaries to drop SQLi/CMD/XSS logic instantly. | **4.5 ms** |
+| **Layer 2** | `ML Classifier` | Evaluates semantic intent anomalies using a fine-tuned DistilBERT transformer model. | Variable |
+| **Layer 3** | `Context Guard` | Restricts system-level prompt overrides, safety bounds, and prevents PII leaks. | < 2.0 ms |
 
 
 ### Key Engineering Features
-* **Bypass Elimination:** Mitigates complex logical statements (like `admin' OR '1'='1`) by using flexible tracking boundaries instead of static text keywords.
-* **Fail-Secure System Control:** Built with a strict containment policy. If any security module hits a runtime error or dependency fault, the application automatically blocks the entry stream (`HTTP 500`) to protect downstream assets.
+* **Bypass Elimination:** Mitigates advanced logical bypasses (such as the classic admin' OR '1'='1 string manipulation vector) by evaluating contextual matching boundaries rather than checking for hardcoded static text keywords.
+* **Fail-Secure System Control:** Implements a strict fail-closed protocol. If any security module encounters a dependency fault or unhandled runtime exception, the engine instantly drops a containment gate (HTTP 500) to secure downstream systems.
 * **Dynamic Path Resolution:** Uses absolute root-path calculation routines so configuration rules load accurately regardless of where the application container boots from.
 
 
-### Technical Stack
-
-**Web Framework:** Python 3.14, FastAPI, Pydantic v2
-
-**AI & Machine Learning:** PyTorch, Hugging Face Transformers (DistilBERT Classifier)
-
-**Security & Ops:** Docker, SlowAPI (Rate-Limiter), GitHub Actions
-
-
-### Spin Up Agent Shield Locally
+### Quick Start 
 
 **1. Installation**
 
@@ -74,7 +69,7 @@ python3 -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
 
 You can test the validation speed and defense layers using a simple terminal curl request:
 
-curl -X POST "http://127.0.0.1:8000/v1/check" \
+curl -X POST "[http://127.0.0.1:8000/v1/check](http://127.0.0.1:8000/v1/check)" \
   -H "Content-Type: application/json" \
   -d "{\"prompt\": \"admin' OR '1'='1\"}"
 
