@@ -2,9 +2,8 @@
 title: Agent Shield
 emoji: 🛡️
 colorFrom: blue
-colorTo: slate
-sdk: fastapi
-app_file: api/main.py
+colorTo: gray
+sdk: docker
 pinned: false
 ---
 
