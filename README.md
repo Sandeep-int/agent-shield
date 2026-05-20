@@ -18,29 +18,20 @@ Agent Shield is an advanced, production-hardened security engine built to stop m
 
 ## 🛡️ Multi-Layered Defense Architecture
 
-Instead of relying on a single checkpoint, incoming strings must pass through a four-stage security waterfall:
+Instead of relying on a single checkpoint, incoming strings must pass through a strict four-stage security waterfall:
 
-[ Incoming Payload ]
-│
-▼
-┌────────────────────────────────────────┐
-│ Layer 0: Normalization & Cleaning      │
-└───────────────────┬────────────────────┘
-│
-▼
-┌────────────────────────────────────────┐
-│ Layer 1: High-Speed Signature Filter   │
-└───────────────────┬────────────────────┘
-│
-▼
-┌────────────────────────────────────────┐
-│ Layer 2: Machine Learning Classifier   │
-└───────────────────┬────────────────────┘
-│
-▼
-┌────────────────────────────────────────┐
-│ Layer 3: Contextual Policy & PII Guard │
-└────────────────────────────────────────┘
+```mermaid
+graph TD
+    A[Incoming Payload Vector] --> B[Layer 0: Normalization & Cleaning]
+    B --> C[Layer 1: High-Speed Signature Filter]
+    C --> D[Layer 2: Machine Learning Classifier]
+    D --> E[Layer 3: Contextual Policy & PII Guard]
+    
+    style A fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style B fill:#e1f5fe,stroke:#03a9f4,stroke-width:2px
+    style C fill:#fff3e0,stroke:#ff9800,stroke-width:2px
+    style D fill:#ede7f6,stroke:#673ab7,stroke-width:2px
+    style E fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
 
 
 | Security Layer | Component Name | Technical Function | Runtime Cost |
