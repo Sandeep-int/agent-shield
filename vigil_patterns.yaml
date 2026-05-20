@@ -7,24 +7,21 @@ patterns:
     regex: "(?i)(DAN|Do Anything Now|developer mode|jailbreak|no restrictions|unrestricted mode)"
     severity: "HIGH"
 
+  # HARDENED CORE SQLI PATTERNS
+  - name: "sql_tautology_robust"
+    regex: "(?i)(%27|\\')\\s*(or|and|xor|not|like)\\s+([\\d\\w]+|%27[^%27]*%27|'[^']*')\\s*=\\s*([\\d\\w]+|%27[^%27]*%27|'[^']*')"
+    severity: "CRITICAL"
+
+  - name: "sql_operator_bypass"
+    regex: "(?i)(%27|\\')\\s*(or|and)\\s+[^=]+="
+    severity: "CRITICAL"
+
   - name: "sql_union"
-    regex: "(?i)(union\\s+select|union\\s+all\\s+select)"
+    regex: "(?i)(union\\s+(all\\s+)?select)"
     severity: "HIGH"
 
   - name: "sql_drop"
     regex: "(?i)(drop\\s+table|drop\\s+database|truncate\\s+table)"
-    severity: "HIGH"
-
-  - name: "sql_or_bypass"
-    regex: "(?i)'\\s*or\\s+'[^']*'\\s*=\\s*'[^']*'"
-    severity: "HIGH"
-
-  - name: "sql_or_numeric"
-    regex: "(?i)'\\s*or\\s+\\d+\\s*=\\s*\\d+"
-    severity: "HIGH"
-
-  - name: "sql_comment_bypass"
-    regex: "(?i)(admin'\\s*--|'\\s*or\\s+1=1|'\\s*or\\s+'x'='x)"
     severity: "HIGH"
 
   - name: "sql_stacked"
@@ -35,6 +32,6 @@ patterns:
     regex: "(?i)(;\\s*ls|;\\s*cat\\s+/|\\|\\s*whoami|&&\\s*id|`whoami`|\\$\\(id\\))"
     severity: "CRITICAL"
 
-  - name: "xss_basic"
-    regex: "(?i)(<script|onerror\\s*=|onload\\s*=|javascript:alert)"
+  - name: "xss_advanced"
+    regex: "(?i)(<script|onerror\\s*=|onload\\s*=|javascript\\s*:|<iframe|srcdoc\\s*=)"
     severity: "HIGH"
