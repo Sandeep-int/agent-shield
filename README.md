@@ -7,7 +7,7 @@ sdk: docker
 pinned: false
 ---
 
-# Agent Shield: protects your AI
+# 🛡️ Agent Shield: protects your AI
 
 [![Application Runtime](https://img.shields.io/badge/HF%20Spaces-Active-blue?style=flat-square&logo=huggingface)](https://huggingface.co/spaces/Sandeep120205/agent-shield)
 [![API Status](https://img.shields.io/badge/API-Live-success?style=flat-square)](https://Sandeep120205-agent-shield.hf.space)
@@ -52,8 +52,11 @@ flowchart TD
 
 
 ### Key Engineering Features
+
 * **Bypass Elimination:** Mitigates advanced logical bypasses (such as the classic admin' OR '1'='1 string manipulation vector) by evaluating contextual matching boundaries rather than checking for hardcoded static text keywords.
+
 * **Fail-Secure System Control:** Implements a strict fail-closed protocol. If any security module encounters a dependency fault or unhandled runtime exception, the engine instantly drops a containment gate (HTTP 500) to secure downstream systems.
+
 * **Dynamic Path Resolution:** Uses absolute root-path calculation routines so configuration rules load accurately regardless of where the application container boots from.
 
 
@@ -63,14 +66,10 @@ flowchart TD
 
 Clone the repository and set up a fresh Python virtual environment:
 
-git clone [https://github.com/Sandeep-int/agent-shield.git](https://github.com/Sandeep-int/agent-shield.git)
-
+git clone https://github.com/Sandeep-int/agent-shield.git
 cd agent-shield
-
 python3 -m venv venv
-
 source venv/bin/activate
-
 pip install -r requirements.txt
 
 
@@ -85,7 +84,7 @@ python3 -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
 
 You can test the validation speed and defense layers using a simple terminal curl request:
 
-curl -X POST "[http://127.0.0.1:8000/v1/check](http://127.0.0.1:8000/v1/check)" \
+curl -X POST "http://127.0.0.1:8000/v1/check" \
   -H "Content-Type: application/json" \
   -d "{\"prompt\": \"admin' OR '1'='1\"}"
 
@@ -93,31 +92,18 @@ curl -X POST "[http://127.0.0.1:8000/v1/check](http://127.0.0.1:8000/v1/check)" 
 **Response Received:**
 
 {
- 
   "verdict": "BLOCK",
- 
   "confidence": 0.99,
- 
   "layer_hit": "L1_VIGIL_SIGNATURE",
- 
   "latency_ms": 4.53,
- 
   "details": {
- 
     "hits": [
- 
       {
- 
         "name": "sql_operator_bypass",
- 
         "severity": "CRITICAL"
- 
       }
- 
     ]
- 
   }
-
 }
 
 
