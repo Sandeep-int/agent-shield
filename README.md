@@ -15,6 +15,7 @@ pinned: false
 Agent Shield is a low-latency, multi-layered security gateway engineered to intercept malicious code injections, structural logical bypasses, and adversarial prompt hijacking attempts before they reach downstream Large Language Models (LLMs) and backend databases.
 
 By combining deterministic canonicalization filters with a fine-tuned cognitive neural model, Agent Shield provides robust runtime defense-in-depth without introducing performance bottlenecks.
+
 ---
 
 ## 🛡️ Multi-Layered Defense Architecture
@@ -22,6 +23,7 @@ By combining deterministic canonicalization filters with a fine-tuned cognitive 
 Instead of relying on a single checkpoint, incoming strings must pass through a strict four-stage security waterfall:
 
 flowchart TD
+
     A[Incoming Request Vector] --> B(Layer 0: Canonicalization)
 
     B --> C(Layer 1: Deterministic Filter)
