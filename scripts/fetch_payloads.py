@@ -7,47 +7,145 @@ OUTPUT_FILE = "data/training_data.csv"
 def fetch_and_build_dataset():
     print("[+] Initializing clean-room dataset pipeline...")
     os.makedirs("data", exist_ok=True)
-    
+
     payloads = []
     labels = []
-    
-    # 1. Fetch Real Malicious Prompt Injections (Label = 1)
+
+    # ── Block 1: neuralchemy (label=1, with FP reclassification)
     try:
         print("[+] Fetching neuralchemy/Prompt-injection-dataset...")
-        ds_injection = load_dataset("neuralchemy/Prompt-injection-dataset", split="train")
-        for item in ds_injection:
-            payloads.append(item["text"])
-            labels.append(1)
+        ds = load_dataset("neuralchemy/Prompt-injection-dataset", split="train")
+        FP_KEYWORDS = [
+            "best practices", "secure coding", "dependency injection",
+            "spring boot", "bypass the cache", "fetch fresh data",
+            "deployment script", "research paper", "adversarial machine learning",
+            "reset my password", "prompt engineering", "filter input",
+            "summarize", "clean document"
+        ]
+        skipped = 0
+        for item in ds:
+            text = item["text"]
+            if any(kw.lower() in text.lower() for kw in FP_KEYWORDS):
+                payloads.append(text); labels.append(0); skipped += 1
+            else:
+                payloads.append(text); labels.append(1)
+        print(f"    Rows: {len(ds)} | Reclassified benign: {skipped}")
     except Exception as e:
-        print(f"[-] Failed to fetch neuralchemy dataset: {e}")
+        print(f"[-] neuralchemy failed: {e}")
 
-    # 2. Append Explicit Benign Counterweights (Label = 0)
-    # These are the EXACT prompts you listed, properly re-mapped to 0 (Benign)
-    print("[+] Stitching verified benign engineering counterweights...")
-    true_benign = [
-        "What are the best practices for secure coding in Python?",
-        "Can you help me write a Python script that filters input from users?",
-        "What does 'prompt engineering' mean?",
-        "Execute the deployment script and push the changes to production.",
-        "Please bypass the cache and fetch fresh data from the API.",
-        "Forget the previous draft and start with a clean document.",
-        "How do I inject a dependency in a Spring Boot application?",
-        "Can you summarize this research paper on adversarial machine learning?",
-        "How do I reset my password if I forgot it?"
-    ]
-    
-    # Balance out the dataset size 1:1 using standard systems queries
-    extended_benign = true_benign * (len(payloads) // len(true_benign) + 1)
-    extended_benign = extended_benign[:len(payloads)]
-    
-    payloads.extend(extended_benign)
-    labels.extend([0] * len(extended_benign))
+    # ── Block 2: JailbreakBench (label=1)
+    try:
+        print("[+] Fetching JailbreakBench/JBB-Behaviors...")
+        jbb = load_dataset("JailbreakBench/JBB-Behaviors", split="train")
+        added = 0
+        for item in jbb:
+            text = item.get("Goal") or item.get("goal") or item.get("behavior") or ""
+            if text.strip():
+                payloads.append(text.strip()); labels.append(1); added += 1
+        print(f"    Rows: {added}")
+    except Exception as e:
+        print(f"[-] JBB failed: {e}")
+        try:
+            jbb_check = load_dataset("JailbreakBench/JBB-Behaviors", split="train")
+            print(f"    Available columns: {jbb_check.column_names}")
+        except:
+            pass
 
-    # Save to workspace target directory
+    # ── Block 3: Harelix mixed techniques (label=1)
+    try:
+        print("[+] Fetching Harelix/Prompt-Injection-Mixed-Techniques-2024...")
+        ds_harelix = load_dataset("Harelix/Prompt-Injection-Mixed-Techniques-2024", split="train")
+        added = 0
+        for item in ds_harelix:
+            text = item.get("prompt") or item.get("text") or item.get("instruction") or ""
+            if text.strip():
+                payloads.append(text.strip()); labels.append(1); added += 1
+        print(f"    Rows: {added}")
+    except Exception as e:
+        print(f"[-] Harelix failed: {e}")
+
+    # ── Block 4: jackhhao jailbreak-classification (mixed labels)
+    try:
+        print("[+] Fetching jackhhao/jailbreak-classification...")
+        ds_jack = load_dataset("jackhhao/jailbreak-classification", split="train")
+        added_mal = 0; added_ben = 0
+        for item in ds_jack:
+            text = item.get("prompt") or item.get("text") or ""
+            if not text.strip():
+                continue
+            if item.get("type") == "jailbreak":
+                payloads.append(text.strip()); labels.append(1); added_mal += 1
+            else:
+                payloads.append(text.strip()); labels.append(0); added_ben += 1
+        print(f"    Rows: {added_mal + added_ben} (malicious: {added_mal}, benign: {added_ben})")
+    except Exception as e:
+        print(f"[-] jackhhao failed: {e}")
+
+    # ── Block 5: OpenSafetyLab Salad-Data (label=1)
+    try:
+        print("[+] Fetching OpenSafetyLab/Salad-Data...")
+        ds_salad = load_dataset("OpenSafetyLab/Salad-Data", name="base_set", split="train")
+        added = 0
+        for item in ds_salad:
+            text = item.get("question") or ""
+            if text.strip():
+                payloads.append(text.strip()); labels.append(1); added += 1
+        print(f"    Rows: {added}")
+    except Exception as e:
+        print(f"[-] Salad-Data failed: {e}")
+
+    # ── Block 6: deepset classic baseline (native labels)
+    try:
+        print("[+] Fetching deepset/prompt-injections...")
+        ds_deepset = load_dataset("deepset/prompt-injections", split="train")
+        added = 0
+        for item in ds_deepset:
+            text = item.get("text") or ""
+            if text.strip():
+                payloads.append(text.strip()); labels.append(item["label"]); added += 1
+        print(f"    Rows: {added}")
+    except Exception as e:
+        print(f"[-] deepset failed: {e}")
+
+    # ── Block 7: Benign counterweights (label=0)
+    try:
+        print("[+] Fetching HuggingFaceH4/grok-conversation-harmless...")
+        ds_b1 = load_dataset("HuggingFaceH4/grok-conversation-harmless", split="train_sft")
+        added = 0
+        for item in ds_b1:
+            text = item.get("prompt") or item.get("init_prompt") or item.get("text") or ""
+            if text.strip():
+                payloads.append(text.strip()); labels.append(0); added += 1
+        print(f"    Rows: {added}")
+    except Exception as e:
+        print(f"[-] grok-harmless failed: {e}")
+
+    try:
+        print("[+] Fetching alespalla/chatbot_instruction_prompts...")
+        ds_b2 = load_dataset("alespalla/chatbot_instruction_prompts", split="train")
+        added = 0
+        for item in ds_b2:
+            text = item.get("prompt") or item.get("text") or ""
+            if text.strip():
+                payloads.append(text.strip()); labels.append(0); added += 1
+        print(f"    Rows: {added}")
+    except Exception as e:
+        print(f"[-] chatbot_instruction failed: {e}")
+
+    # ── Finalize
     df = pd.DataFrame({"prompt": payloads, "label": labels})
+    df = df.drop_duplicates(subset="prompt").reset_index(drop=True)
+    df = df.sample(frac=1, random_state=42).reset_index(drop=True)
+
+    malicious = int(df["label"].sum())
+    benign = len(df) - malicious
+
     df.to_csv(OUTPUT_FILE, index=False)
-    print(f"[✓] Success. Fixed dataset saved to {OUTPUT_FILE}")
-    print(f"Total rows compiled: {len(df)}")
+    print(f"\n[✓] Dataset saved → {OUTPUT_FILE}")
+    print(f"    Total rows : {len(df)}")
+    print(f"    Malicious  : {malicious}")
+    print(f"    Benign     : {benign}")
+    print(f"    Balance    : {benign/malicious:.2f}:1")
 
 if __name__ == "__main__":
     fetch_and_build_dataset()

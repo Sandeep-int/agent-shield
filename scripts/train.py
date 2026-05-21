@@ -1,37 +1,76 @@
 import pandas as pd
-from transformers import DistilBertForSequenceClassification, DistilBertTokenizer, Trainer, TrainingArguments
+from sklearn.model_selection import train_test_split
+from transformers import (
+    DistilBertForSequenceClassification,
+    DistilBertTokenizer,
+    Trainer,
+    TrainingArguments
+)
 from datasets import Dataset
+import numpy as np
+from sklearn.metrics import accuracy_score, f1_score, classification_report
 
-# 1. Load your training data
-df = pd.read_csv("data/training_data.csv")
-dataset = Dataset.from_pandas(df)
+# ── 1. Load + split
+df = pd.read_csv("data/training_data.csv").dropna(subset=["prompt", "label"])
+df["label"] = df["label"].astype(int)
 
-# 2. Tokenize (Crucial: convert text to numbers the model understands)
+train_df, eval_df = train_test_split(df, test_size=0.15, random_state=42, stratify=df["label"])
+train_dataset = Dataset.from_pandas(train_df.reset_index(drop=True))
+eval_dataset  = Dataset.from_pandas(eval_df.reset_index(drop=True))
+
+print(f"Train: {len(train_df)} | Eval: {len(eval_df)}")
+
+# ── 2. Tokenize
 tokenizer = DistilBertTokenizer.from_pretrained("distilbert-base-uncased")
-def tokenize_function(examples):
-    return tokenizer(examples["prompt"], padding="max_length", truncation=True)
 
-tokenized_datasets = dataset.map(tokenize_function, batched=True)
+def tokenize(examples):
+    return tokenizer(examples["prompt"], padding="max_length", truncation=True, max_length=256)
 
-# 3. Initialize the model for 2 classes (0: Clean, 1: Malicious)
-model = DistilBertForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
+train_dataset = train_dataset.map(tokenize, batched=True)
+eval_dataset  = eval_dataset.map(tokenize, batched=True)
 
-# 4. Training Arguments
-training_args = TrainingArguments(
-    output_dir="./models/fine_tuned_bert",
-    num_train_epochs=5, # Slightly higher for small datasets
-    per_device_train_batch_size=4,
-    save_strategy="no"
+# ── 3. Metrics
+def compute_metrics(eval_pred):
+    logits, labels = eval_pred
+    preds = np.argmax(logits, axis=-1)
+    print("\n" + classification_report(labels, preds, target_names=["Benign", "Malicious"]))
+    return {
+        "accuracy": accuracy_score(labels, preds),
+        "f1":       f1_score(labels, preds, average="weighted")
+    }
+
+# ── 4. Model
+model = DistilBertForSequenceClassification.from_pretrained(
+    "distilbert-base-uncased", num_labels=2
 )
 
-# 5. Trainer & Execute
+# ── 5. Training args — CPU optimized
+training_args = TrainingArguments(
+    output_dir="./models/fine_tuned_bert",
+    num_train_epochs=3,               # 3 sufficient for large dataset
+    per_device_train_batch_size=16,   # was 4 — 4x faster
+    per_device_eval_batch_size=32,
+    eval_strategy="epoch",            # accuracy visible each epoch
+    save_strategy="epoch",
+    load_best_model_at_end=True,
+    metric_for_best_model="f1",
+    logging_steps=50,
+    report_to="none",                 # no wandb crash
+    dataloader_num_workers=0,         # WSL safe
+)
+
+# ── 6. Train
 trainer = Trainer(
     model=model,
     args=training_args,
-    train_dataset=tokenized_datasets,
+    train_dataset=train_dataset,
+    eval_dataset=eval_dataset,
+    compute_metrics=compute_metrics,
 )
 
 trainer.train()
-model.save_pretrained("./models/fine_tuned_bert")
+
+# ── 7. Save best model
+trainer.save_model("./models/fine_tuned_bert")
 tokenizer.save_pretrained("./models/fine_tuned_bert")
-print("Training complete. Hardened model saved to ./models/fine_tuned_bert")
+print("\n[✓] Best model saved → ./models/fine_tuned_bert")
