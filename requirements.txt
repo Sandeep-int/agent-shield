@@ -10,3 +10,7 @@ gradio
 requests
 pandas
 datasets
+pydantic
+gunicorn
+uvloop
+onnxruntime
