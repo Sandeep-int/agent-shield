@@ -11,13 +11,11 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from detectors.l3_guardrails import run_l3_guardrails
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from detectors.vigil_scanner import VigilScanner
 from detectors.bert_classifier import BertClassifier
-from detectors.l3_custom import CustomL3
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,17 +32,14 @@ app.add_exception_handler(RateLimitExceeded, lambda r, e: JSONResponse(
 ))
 app.add_middleware(SlowAPIMiddleware)
 
-# Initialize detectors safely
 try:
     scanner = VigilScanner()
     classifier = BertClassifier()
-    l3_checker = CustomL3()
-    logger.info("✓ Security Engine Loaded Layers: L0, L1, L2, L3")
+    logger.info("✓ Security Engine Loaded: L0, L1, L2")
 except Exception as e:
-    logger.critical(f"FATAL: Core engine dependencies failed to load: {e}")
+    logger.critical(f"FATAL: Core engine failed: {e}")
     raise
 
-# --- STRUCURAL BASEMENT VALIDATION SCHEMA (L0) ---
 class CheckRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=10000)
 
@@ -53,9 +48,7 @@ class CheckRequest(BaseModel):
     def normalize_and_validate(cls, value: str) -> str:
         cleaned = value.strip()
         if not cleaned:
-            raise ValueError("Submission payloads cannot contain empty sequences.")
-        
-        # Layer 0 Check: URL decoding & Unicode normalization normalization loop
+            raise ValueError("Empty payload.")
         decoded = urllib.parse.unquote(cleaned)
         normalized = "".join(ch for ch in unicodedata.normalize('NFKC', decoded) if not unicodedata.combining(ch))
         return normalized
@@ -71,23 +64,8 @@ class CheckResponse(BaseModel):
 @limiter.limit("30/minute")
 async def check_prompt(request: Request, req: CheckRequest):
     start_time = time.time()
-    target_payload = req.prompt 
+    target_payload = req.prompt
 
-    # --- NEW: INTEGRATED L3 PRE-FLIGHT GUARD ---
-
-    logger.info(f"L3 Pre-flight inspection: {target_payload[:50]}...")
-
-    guard_result = run_l3_guardrails(target_payload, context="input")
-    if not guard_result["passed"]:
-        return CheckResponse(
-            verdict="BLOCK",
-            confidence=1.0,
-            layer_hit="L3_PREFLIGHT_GUARD",
-            latency_ms=(time.time() - start_time) * 1000,
-            details={"reason": guard_result["reason"]}
-        )  # Already sanitized via pydantic pre-processor
-
-    # L1: Aggressive Static Engine Verification
     try:
         vigil_result = scanner.scan(target_payload)
         if vigil_result.get("blocked", False):
@@ -96,41 +74,25 @@ async def check_prompt(request: Request, req: CheckRequest):
                 confidence=0.99,
                 layer_hit="L1_VIGIL_SIGNATURE",
                 latency_ms=(time.time() - start_time) * 1000,
-                details={"hits": vigil_result.get("hits", ["Signature match violation"])}
+                details={"hits": vigil_result.get("hits", [])}
             )
     except Exception as e:
-        logger.error(f"L1 Runtime Exception Fail-Safe Block: {e}")
-        # FAIL-SECURE strategy implementation
-        raise HTTPException(status_code=500, detail="Internal inspection exception error.")
+        logger.error(f"L1 Error: {e}")
+        raise HTTPException(status_code=500, detail="Inspection failed.")
 
-    # L2: Deep Learning Neural Semantic Evaluation
     try:
         bert_result = classifier.classify(target_payload)
         if bert_result.get("is_injection") and bert_result.get("confidence", 0) > 0.75:
             return CheckResponse(
                 verdict="BLOCK",
                 confidence=float(bert_result["confidence"]),
-                layer_hit="L2_DISTILBERT_MODEL",
+                layer_hit="L2_ONNX_MODEL",
                 latency_ms=(time.time() - start_time) * 1000,
                 details={"model_confidence": bert_result["confidence"]}
             )
     except Exception as e:
-        logger.error(f"L2 Model Processing Exception: {e}")
-        raise HTTPException(status_code=500, detail="Cognitive layer tracking evaluation failure.")
-
-    # L3: Identity & Posture Safety Analysis
-    try:
-        l3_result = l3_checker.check(target_payload)
-        if not l3_result.get("passed", True):
-            return CheckResponse(
-                verdict="BLOCK",
-                confidence=0.95,
-                layer_hit="L3_SAFETY_PII",
-                latency_ms=(time.time() - start_time) * 1000,
-                details={"reason": l3_result.get("reason", "Policy restriction")}
-            )
-    except Exception as e:
-        logger.error(f"L3 Framework Anomaly: {e}")
+        logger.error(f"L2 Error: {e}")
+        raise HTTPException(status_code=500, detail="Model inference failed.")
 
     total_latency = (time.time() - start_time) * 1000
     return CheckResponse(
@@ -147,4 +109,4 @@ async def health():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=7860)
