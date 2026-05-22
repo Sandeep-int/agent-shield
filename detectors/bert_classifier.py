@@ -1,39 +1,50 @@
-import torch
-from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
 import os
 import time
+import numpy as np
+from transformers import DistilBertTokenizer
+from onnxruntime import InferenceSession
 
-# Dynamic model path
-MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "bert_injection")
+HF_MODEL = "Sandeep120205/agent-shield-distilbert"
+MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
+ONNX_PATH = os.path.join(MODEL_DIR, "model.onnx")
 
 class BertClassifier:
     def __init__(self):
-        # Point BOTH to the same folder
-        path = "./models/fine_tuned_bert"
         try:
-            self.tokenizer = DistilBertTokenizer.from_pretrained(path)
-            self.model = DistilBertForSequenceClassification.from_pretrained(path)
-            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            self.model.to(self.device)
-            self.model.eval()
+            # Load tokenizer from HF Hub (works on Azure)
+            self.tokenizer = DistilBertTokenizer.from_pretrained(HF_MODEL)
+            self.session = InferenceSession(ONNX_PATH, providers=["CPUExecutionProvider"])
+            print("[✓] L2: ONNX model loaded")
         except Exception as e:
-            print(f"Critical load error: {e}")
-            raise e
+            raise RuntimeError(f"L2 load failed: {e}")
 
     def classify(self, prompt: str):
         start = time.time()
         try:
-            inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=128).to(self.device)
-            with torch.no_grad():
-                outputs = self.model(**inputs)
-            logits = outputs.logits
-            confidence = torch.softmax(logits, dim=1)[0].max().item()
-            is_injection = logits.argmax(dim=1).item() == 1
-            
+            inputs = self.tokenizer(
+                prompt,
+                return_tensors="np",
+                truncation=True,
+                max_length=256,
+                padding="max_length"
+            )
+            feeds = {
+                "input_ids": inputs["input_ids"].astype(np.int64),
+                "attention_mask": inputs["attention_mask"].astype(np.int64)
+            }
+            logits = self.session.run(["logits"], feeds)[0]
+            probs = np.exp(logits) / np.exp(logits).sum(axis=1, keepdims=True)
+            predicted_class = int(np.argmax(probs, axis=1)[0])
+            confidence = float(probs[0][predicted_class])
             return {
-                "is_injection": is_injection,
+                "is_injection": predicted_class == 1,
                 "confidence": confidence,
                 "latency_ms": (time.time() - start) * 1000
             }
         except Exception as e:
-            return {"is_injection": False, "confidence": 0.0, "latency_ms": (time.time() - start) * 1000, "error": str(e)}
+            return {
+                "is_injection": False,
+                "confidence": 0.0,
+                "latency_ms": (time.time() - start) * 1000,
+                "error": str(e)
+            }
