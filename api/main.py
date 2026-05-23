@@ -1,4 +1,3 @@
-cat > api/main.py << 'ENDOFFILE'
 import os
 import sys
 import time
