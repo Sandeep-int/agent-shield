@@ -15,3 +15,4 @@ gunicorn
 uvloop
 onnxruntime
 azure-storage-blob
+azure-data-tables

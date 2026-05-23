@@ -1,9 +1,11 @@
+cat > api/main.py << 'ENDOFFILE'
 import os
 import sys
 import time
 import logging
 import urllib.parse
 import unicodedata
+from datetime import datetime, timezone
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
@@ -19,6 +21,32 @@ from detectors.bert_classifier import BertClassifier
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+AZURE_CONNECTION_STRING = os.environ.get("AZURE_STORAGE_CONNECTION_STRING", "")
+
+def log_to_azure(prompt, verdict, confidence, layer_hit, latency_ms, client_ip):
+    try:
+        from azure.data.tables import TableServiceClient
+        service = TableServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
+        table = service.get_table_client("agentshieldlogs")
+        try:
+            service.create_table("agentshieldlogs")
+        except:
+            pass
+        entity = {
+            "PartitionKey": verdict,
+            "RowKey": str(time.time_ns()),
+            "prompt": prompt[:500],
+            "verdict": verdict,
+            "confidence": float(confidence),
+            "layer_hit": layer_hit,
+            "latency_ms": float(latency_ms),
+            "client_ip": client_ip,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        table.upsert_entity(entity)
+    except Exception as e:
+        logger.warning(f"Audit log failed: {e}")
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
@@ -65,15 +93,18 @@ class CheckResponse(BaseModel):
 async def check_prompt(request: Request, req: CheckRequest):
     start_time = time.time()
     target_payload = req.prompt
+    client_ip = get_remote_address(request)
 
     try:
         vigil_result = scanner.scan(target_payload)
         if vigil_result.get("blocked", False):
+            latency = (time.time() - start_time) * 1000
+            log_to_azure(target_payload, "BLOCK", 0.99, "L1_VIGIL_SIGNATURE", latency, client_ip)
             return CheckResponse(
                 verdict="BLOCK",
                 confidence=0.99,
                 layer_hit="L1_VIGIL_SIGNATURE",
-                latency_ms=(time.time() - start_time) * 1000,
+                latency_ms=latency,
                 details={"hits": vigil_result.get("hits", [])}
             )
     except Exception as e:
@@ -83,11 +114,13 @@ async def check_prompt(request: Request, req: CheckRequest):
     try:
         bert_result = classifier.classify(target_payload)
         if bert_result.get("is_injection") and bert_result.get("confidence", 0) > 0.75:
+            latency = (time.time() - start_time) * 1000
+            log_to_azure(target_payload, "BLOCK", bert_result["confidence"], "L2_ONNX_MODEL", latency, client_ip)
             return CheckResponse(
                 verdict="BLOCK",
                 confidence=float(bert_result["confidence"]),
                 layer_hit="L2_ONNX_MODEL",
-                latency_ms=(time.time() - start_time) * 1000,
+                latency_ms=latency,
                 details={"model_confidence": bert_result["confidence"]}
             )
     except Exception as e:
@@ -95,6 +128,7 @@ async def check_prompt(request: Request, req: CheckRequest):
         raise HTTPException(status_code=500, detail="Model inference failed.")
 
     total_latency = (time.time() - start_time) * 1000
+    log_to_azure(target_payload, "ALLOW", 0.00, "COMPREHENSIVE_PASS", total_latency, client_ip)
     return CheckResponse(
         verdict="ALLOW",
         confidence=0.00,
@@ -110,3 +144,4 @@ async def health():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=7860)
+ENDOFFILE
