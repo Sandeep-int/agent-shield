@@ -250,7 +250,7 @@ MIT — see [LICENSE](LICENSE)
 ## Built by
 
 **Sandeep S** — AI/ML Engineer | CSE Graduate 2026
-[GitHub](https://github.com/Sandeep-int) · [HuggingFace](https://huggingface.co/Sandeep120205) · [LinkedIn](#)
+[GitHub](https://github.com/Sandeep-int) · [HuggingFace](https://huggingface.co/Sandeep120205) · [LinkedIn](https://www.linkedin.com/in/sandeep-s-68012225a/)
 
 ---
 
