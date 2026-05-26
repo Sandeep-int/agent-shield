@@ -11,7 +11,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score, f1_score, classification_report
 
 # ── 1. Load + split
-df = pd.read_csv("data/training_data.csv").dropna(subset=["prompt", "label"])
+df = pd.read_csv("data/prompt_injection_dataset.csv").dropna(subset=["prompt", "label"])
 df["label"] = df["label"].astype(int)
 
 train_df, eval_df = train_test_split(df, test_size=0.15, random_state=42, stratify=df["label"])
