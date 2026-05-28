@@ -26,10 +26,7 @@ def download_file(url: str, dest: str):
 class BertClassifier:
     def __init__(self):
         try:
-            if not os.path.exists(ONNX_PATH):
-                download_file(BLOB_ONNX, ONNX_PATH)
-            if not os.path.exists(ONNX_DATA_PATH):
-                download_file(BLOB_ONNX_DATA, ONNX_DATA_PATH)
+            download_file(BLOB_ONNX, ONNX_PATH)
 
             self.tokenizer = DistilBertTokenizer.from_pretrained(HF_MODEL)
             self.session = InferenceSession(ONNX_PATH, providers=["CPUExecutionProvider"])
