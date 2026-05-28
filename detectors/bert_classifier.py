@@ -64,3 +64,4 @@ class BertClassifier:
                 "latency_ms": (time.time() - start) * 1000,
                 "error": str(e)
             }
+            # Force reload: v2 model
