@@ -3,6 +3,7 @@
 **Protects your AI**
 
 Detects prompt injections and malicious inputs before they reach your LLM or database.
+
 [![Live UI](https://img.shields.io/badge/UI-HuggingFace-yellow)](https://huggingface.co/spaces/Sandeep120205/agent-shield)
 [![Model](https://img.shields.io/badge/Model-DistilBERT-blue)](https://huggingface.co/Sandeep120205/agent-shield-distilbert)
 [![Status](https://img.shields.io/badge/Status-Live-brightgreen)](#)
