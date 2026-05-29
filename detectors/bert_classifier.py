@@ -8,7 +8,6 @@ HF_MODEL = "Sandeep120205/agent-shield-distilbert"
 MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
 ONNX_PATH = os.path.join(MODEL_DIR, "model.onnx")
 ONNX_DATA_PATH = os.path.join(MODEL_DIR, "model.onnx.data")
-
 BLOB_ONNX = "https://agentshieldmodels.blob.core.windows.net/models/model.onnx"
 BLOB_ONNX_DATA = "https://agentshieldmodels.blob.core.windows.net/models/model.onnx.data"
 
@@ -26,11 +25,7 @@ def download_file(url: str, dest: str):
 class BertClassifier:
     def __init__(self):
         try:
-            if not os.path.exists(ONNX_PATH):
-                download_file(BLOB_ONNX, ONNX_PATH)
-            if not os.path.exists(ONNX_DATA_PATH):
-                download_file(BLOB_ONNX_DATA, ONNX_DATA_PATH)
-
+            download_file(BLOB_ONNX, ONNX_PATH)
             self.tokenizer = DistilBertTokenizer.from_pretrained(HF_MODEL)
             self.session = InferenceSession(ONNX_PATH, providers=["CPUExecutionProvider"])
             print("[✓] L2: ONNX model loaded")
@@ -44,7 +39,7 @@ class BertClassifier:
                 prompt,
                 return_tensors="np",
                 truncation=True,
-                max_length=256,
+                max_length=128,        # ← FIXED: was 256, model trained on 128
                 padding="max_length"
             )
             feeds = {
@@ -67,3 +62,4 @@ class BertClassifier:
                 "latency_ms": (time.time() - start) * 1000,
                 "error": str(e)
             }
+        # Force reload: v3 model

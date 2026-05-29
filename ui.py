@@ -2,7 +2,7 @@ import gradio as gr
 import requests
 import datetime
 
-API_URL = "http://127.0.0.1:8000/v1/check"
+API_URL = "https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net/v1/check"
 
 css = """
 body { background-color: #000000 !important; }
@@ -46,7 +46,7 @@ footer { display: none !important; }
 
 def check_prompt(prompt):
     try:
-        response = requests.post(API_URL, json={"prompt": prompt})
+        response = requests.post(API_URL, json={"prompt": prompt}, timeout=10)
         result = response.json()
         
         # Format the output for the UI
