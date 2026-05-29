@@ -5,7 +5,8 @@ import logging
 import urllib.parse
 import unicodedata
 from datetime import datetime, timezone
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Security
+from fastapi.security import APIKeyHeader
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 from slowapi import Limiter
@@ -21,7 +22,14 @@ from detectors.bert_classifier import BertClassifier
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-AZURE_CONNECTION_STRING = os.environ.get("AZURE_STORAGE_CONNECTION_STRING", "")
+VALID_API_KEY = os.environ.get("AGENT_SHIELD_API_KEY", "")
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def verify_api_key(api_key: str = Security(api_key_header)):
+    if not api_key or api_key != VALID_API_KEY:
+        logger.warning("Unauthorized access attempt — missing or invalid API key")
+        raise HTTPException(status_code=401, detail="Unauthorized. Valid X-API-Key required.")
+    return api_key
 
 def log_to_azure(prompt, verdict, confidence, layer_hit, latency_ms, client_ip):
     try:
@@ -89,7 +97,7 @@ class CheckResponse(BaseModel):
 
 @app.post("/v1/check", response_model=CheckResponse)
 @limiter.limit("30/minute")
-async def check_prompt(request: Request, req: CheckRequest):
+async def check_prompt(request: Request, req: CheckRequest, api_key: str = Security(verify_api_key)):
     start_time = time.time()
     target_payload = req.prompt
     client_ip = get_remote_address(request)

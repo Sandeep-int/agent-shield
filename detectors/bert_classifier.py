@@ -25,7 +25,10 @@ def download_file(url: str, dest: str):
 class BertClassifier:
     def __init__(self):
         try:
-            download_file(BLOB_ONNX, ONNX_PATH)
+            if not os.path.exists(ONNX_PATH):
+                download_file(BLOB_ONNX, ONNX_PATH)
+            if not os.path.exists(ONNX_DATA_PATH):
+                download_file(BLOB_ONNX_DATA, ONNX_DATA_PATH)
             self.tokenizer = DistilBertTokenizer.from_pretrained(HF_MODEL)
             self.session = InferenceSession(ONNX_PATH, providers=["CPUExecutionProvider"])
             print("[✓] L2: ONNX model loaded")
@@ -39,7 +42,7 @@ class BertClassifier:
                 prompt,
                 return_tensors="np",
                 truncation=True,
-                max_length=128,        # ← FIXED: was 256, model trained on 128
+                max_length=128,        # ← NEVER change. Model trained on 128.
                 padding="max_length"
             )
             feeds = {
@@ -62,4 +65,3 @@ class BertClassifier:
                 "latency_ms": (time.time() - start) * 1000,
                 "error": str(e)
             }
-        # Force reload: v3 model
