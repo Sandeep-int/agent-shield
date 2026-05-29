@@ -26,10 +26,6 @@ class BertClassifier:
     def __init__(self):
         try:
             download_file(BLOB_ONNX, ONNX_PATH)
-<<<<<<< HEAD
-=======
-
->>>>>>> 2ff00b209441f152aea1df3cef006a419e694225
             self.tokenizer = DistilBertTokenizer.from_pretrained(HF_MODEL)
             self.session = InferenceSession(ONNX_PATH, providers=["CPUExecutionProvider"])
             print("[✓] L2: ONNX model loaded")
@@ -66,8 +62,4 @@ class BertClassifier:
                 "latency_ms": (time.time() - start) * 1000,
                 "error": str(e)
             }
-<<<<<<< HEAD
         # Force reload: v3 model
-=======
-            # Force reload: v2 model
->>>>>>> 2ff00b209441f152aea1df3cef006a419e694225
