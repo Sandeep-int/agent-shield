@@ -1,0 +1,16 @@
+Copyright (c) 2026 Sandeep (github.com/Sandeep-int)
+All Rights Reserved.
+
+Agent Shield and all associated source code, models, and assets
+are the intellectual property of Sandeep.
+
+Permission is granted to USE this software via the published
+CLI tool (pip install agent-shield-int) and API endpoints only.
+
+The following are strictly PROHIBITED without written permission:
+- Copying or reproducing the source code
+- Modifying or creating derivative works  
+- Redistributing or reselling the software or model
+- Using the trained model (agent-shield-distilbert) commercially
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
