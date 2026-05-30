@@ -1,3 +1,6 @@
+from api.banner import print_banner
+print_banner()
+
 from api.main import app
 
 if __name__ == "__main__":
