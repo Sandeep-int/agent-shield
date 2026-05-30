@@ -16,3 +16,5 @@ uvloop
 onnxruntime
 azure-storage-blob
 azure-data-tables
+httpx
+httpx

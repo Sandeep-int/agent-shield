@@ -18,18 +18,32 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from detectors.vigil_scanner import VigilScanner
 from detectors.bert_classifier import BertClassifier
+from api.auth import router as auth_router, validate_token
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-VALID_API_KEY = os.environ.get("AGENT_SHIELD_API_KEY", "")
+VALID_API_KEY           = os.environ.get("AGENT_SHIELD_API_KEY", "")
+AZURE_CONNECTION_STRING = os.environ.get("AZURE_STORAGE_CONNECTION_STRING", "")
+
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 async def verify_api_key(api_key: str = Security(api_key_header)):
-    if not api_key or api_key != VALID_API_KEY:
-        logger.warning("Unauthorized access attempt — missing or invalid API key")
+    if not api_key:
+        logger.warning("Unauthorized — missing API key")
         raise HTTPException(status_code=401, detail="Unauthorized. Valid X-API-Key required.")
-    return api_key
+
+    # Priority 1 — master env key (backward compatible)
+    if VALID_API_KEY and api_key == VALID_API_KEY:
+        return api_key
+
+    # Priority 2 — OAuth token from Azure Table
+    token_data = validate_token(api_key)
+    if token_data:
+        return api_key
+
+    logger.warning(f"Unauthorized — invalid key: {api_key[:8]}...")
+    raise HTTPException(status_code=401, detail="Unauthorized. Valid X-API-Key required.")
 
 def log_to_azure(prompt, verdict, confidence, layer_hit, latency_ms, client_ip):
     try:
@@ -38,7 +52,7 @@ def log_to_azure(prompt, verdict, confidence, layer_hit, latency_ms, client_ip):
         table = service.get_table_client("agentshieldlogs")
         try:
             service.create_table("agentshieldlogs")
-        except:
+        except Exception:
             pass
         entity = {
             "PartitionKey": verdict,
@@ -59,7 +73,7 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title="Agent Shield",
     description="Hardened Hybrid WAF & Prompt Injection Engine",
-    version="1.1.0"
+    version="1.2.0"
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, lambda r, e: JSONResponse(
@@ -67,8 +81,11 @@ app.add_exception_handler(RateLimitExceeded, lambda r, e: JSONResponse(
 ))
 app.add_middleware(SlowAPIMiddleware)
 
+# ── Mount auth routes ─────────────────────────────────────────────────────────
+app.include_router(auth_router)
+
 try:
-    scanner = VigilScanner()
+    scanner    = VigilScanner()
     classifier = BertClassifier()
     logger.info("✓ Security Engine Loaded: L0, L1, L2")
 except Exception as e:
@@ -85,7 +102,10 @@ class CheckRequest(BaseModel):
         if not cleaned:
             raise ValueError("Empty payload.")
         decoded = urllib.parse.unquote(cleaned)
-        normalized = "".join(ch for ch in unicodedata.normalize('NFKC', decoded) if not unicodedata.combining(ch))
+        normalized = "".join(
+            ch for ch in unicodedata.normalize('NFKC', decoded)
+            if not unicodedata.combining(ch)
+        )
         return normalized
 
 class CheckResponse(BaseModel):
@@ -146,7 +166,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "engine": "Agent Shield Active"}
+    return {"status": "healthy", "engine": "Agent Shield Active", "version": "1.2.0"}
 
 if __name__ == "__main__":
     import uvicorn
