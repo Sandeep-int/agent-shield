@@ -3,12 +3,15 @@ name: Publish to PyPI
 on:
   push:
     tags:
-      - "v*"   # triggers on v1.0.0, v1.0.1, etc.
+      - "v*"
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     environment: pypi
+
+    permissions:
+      id-token: write
 
     steps:
       - name: Checkout
@@ -20,13 +23,10 @@ jobs:
           python-version: "3.11"
 
       - name: Install build tools
-        run: pip install build twine
+        run: pip install build
 
       - name: Build package
         run: python -m build
 
       - name: Publish to PyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload dist/*
+        uses: pypa/gh-action-pypi-publish@release/v1
