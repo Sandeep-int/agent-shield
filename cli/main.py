@@ -21,13 +21,14 @@ API_KEY_ENV = "AGENT_SHIELD_API_KEY"
 TOKEN_FILE  = Path.home() / ".agent-shield" / "token"
 
 # ── ANSI true-color ──────────────────────────────────────────────────────────
-_TOP    = (152, 187, 245)
-_BOTTOM = (28,  48,  79)
-_DIM    = (55,  75,  110)
+_TOP    = (74,  144, 217)   # #4A90D9
+_BOTTOM = (74,  144, 217)   # #4A90D9
+_DIM    = (55,  75,  110)   # ← restored — used in print_banner() and cmd_auth()
 _GREEN  = (80,  200, 120)
 _RED    = (220, 80,  80)
 _YELLOW = (220, 180, 80)
 _RESET  = "\033[0m"
+
 
 def _c(rgb, text):
     r, g, b = rgb
@@ -69,7 +70,6 @@ def print_banner():
         color = _TOP if i < 3 else _BOTTOM
         row = _AGENT[i] + _DASH[i] + _SHIELD[i]
         out.write(_c(color, row) + "\n")
-    out.write(_c(_DIM, _TAGLINE) + "\n")
     out.write("\n")
     out.flush()
 
@@ -168,15 +168,8 @@ def cmd_auth(revoke: bool = False):
         print(f"     {login_url}")
         print()
 
-    # Poll /auth/callback result — user completes in browser
-    # CLI polls a status endpoint every 2s for up to 2 minutes
     print("  Waiting for GitHub authorization", end="", flush=True)
 
-    callback_url = f"{API_BASE}/auth/callback"
-    deadline = time.time() + 120  # 2 minute timeout
-
-    # Simple approach: after browser redirect, user gets token in browser
-    # We prompt them to paste it (most reliable for CLI tools)
     print()
     print()
     print(_c(_YELLOW, "  After authorizing in browser, your token will appear on screen."))
