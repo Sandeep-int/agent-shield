@@ -61,7 +61,6 @@ _SHIELD = [
     r"███████║██║  ██║██║███████╗███████╗██████╔╝",
     r"╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚═════╝ ",
 ]
-_TAGLINE = "  LLM Prompt Injection Detection  ·  Azure East Asia  ·  99.42% val acc  ·  Sandeep120205"
 
 def print_banner():
     out = sys.stdout

@@ -1,0 +1,2 @@
+[console_scripts]
+agent-shield = cli.main:main
