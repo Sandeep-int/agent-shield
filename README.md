@@ -1,5 +1,8 @@
-# Agent Shield 🛡️
+<p align="center">
+  <img src="assets/banner.png" alt="Agent Shield" width="800"/>
+</p>
 
+---
 **Protects your AI**
 
 Detects prompt injections and malicious inputs before they reach your LLM or database.
