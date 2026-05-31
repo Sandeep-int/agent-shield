@@ -39,7 +39,7 @@ Every request passes through 3 layers in order. One hit = blocked.
 
 ## 🏗️ Three-Layer Waterfall Architecture
 
-Every request passes through 4 layers in order. One failure = blocked. No exceptions.
+Every request passes through 3 layers in order. One failure = blocked. No exceptions.
 
 ```
 📥 Incoming Request
