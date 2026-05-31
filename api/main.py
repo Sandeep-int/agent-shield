@@ -164,9 +164,38 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
         details={"all_checks": "verified_clean"}
     )
 
-@app.get("/health")
-async def health():
-    return {"status": "healthy", "engine": "Agent Shield Active", "version": "1.2.0"}
+@app.get("/metrics")
+async def metrics():
+    try:
+        from azure.data.tables import TableServiceClient
+        service = TableServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
+        table = service.get_table_client("agentshieldlogs")
+
+        entities = list(table.list_entities())
+
+        total = len(entities)
+        block_count = sum(1 for e in entities if e.get("verdict") == "BLOCK")
+        allow_count = sum(1 for e in entities if e.get("verdict") == "ALLOW")
+
+        layer_counts = {}
+        for e in entities:
+            layer = e.get("layer_hit", "UNKNOWN")
+            layer_counts[layer] = layer_counts.get(layer, 0) + 1
+
+        latencies = [e.get("latency_ms", 0) for e in entities if e.get("latency_ms")]
+        avg_latency = round(sum(latencies) / len(latencies), 2) if latencies else 0
+
+        return {
+            "total_requests": total,
+            "block_count": block_count,
+            "allow_count": allow_count,
+            "block_rate_percent": round((block_count / total) * 100, 2) if total else 0,
+            "avg_latency_ms": avg_latency,
+            "layer_breakdown": layer_counts
+        }
+    except Exception as e:
+        logger.error(f"Metrics error: {e}")
+        raise HTTPException(status_code=500, detail="Metrics unavailable")
 
 if __name__ == "__main__":
     import uvicorn
