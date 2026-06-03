@@ -140,13 +140,13 @@ async def security_headers_middleware(request: Request, call_next):
         del response.headers["x-powered-by"]
     return response
 
+app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ALLOWED_ORIGINS if CORS_ALLOWED_ORIGINS else [],
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "X-API-Key", "Authorization"],
 )
-app.add_middleware(SlowAPIMiddleware)
 
 # ── Mount auth routes ─────────────────────────────────────────────────────────
 app.include_router(auth_router)

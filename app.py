@@ -1,6 +1,10 @@
-# app.py - Refactored Line
 import os
 import uvicorn
+from api.banner import print_banner
 
-# Bind natively to loopback locally, while allowing cloud infrastructure string injections
-uvicorn.run("api.main:app", host=os.environ.get("HOST", "127.0.0.1"), port=7860)
+print_banner()
+
+from api.main import app
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=7860)
