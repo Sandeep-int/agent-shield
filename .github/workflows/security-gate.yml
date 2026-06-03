@@ -12,7 +12,7 @@ jobs:
       - name: Checkout Code Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Crucial for SonarCloud tracking and analysis
+          fetch-depth: 0
 
       - name: Initialize Python Runtime Env
         uses: actions/setup-python@v5
@@ -31,8 +31,8 @@ jobs:
           bandit -r . --exclude ./venv,./onnx_env,./tests -lll
           pip-audit
 
-- name: Run Unit Tests and Request Schema Audits
-  env:
-    AGENT_SHIELD_API_KEY: ${{ secrets.AGENT_SHIELD_API_KEY }}
-  run: |
-    python -m pytest tests/
+      - name: Run Unit Tests and Request Schema Audits
+        env:
+          AGENT_SHIELD_API_KEY: ${{ secrets.AGENT_SHIELD_API_KEY }}
+        run: |
+          python -m pytest tests/
