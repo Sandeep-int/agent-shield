@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, Request, HTTPException, Security
 from fastapi.security import APIKeyHeader
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -69,7 +70,40 @@ def log_to_azure(prompt, verdict, confidence, layer_hit, latency_ms, client_ip):
     except Exception as e:
         logger.warning(f"Audit log failed: {e}")
 
-limiter = Limiter(key_func=get_remote_address)
+# --- Tiered key-based rate limiting ---
+MAX_BODY_BYTES = 10240
+INTERNAL_KEYS = set(filter(None, os.environ.get("AGENT_STRIKE_INTERNAL_KEYS", "").split(",")))
+
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+
+def _resolve_api_key(request: Request) -> str:
+    return request.headers.get("X-API-Key", "")
+
+def _is_internal_key(api_key: str) -> bool:
+    return api_key in INTERNAL_KEYS
+
+def _is_pro_key(api_key: str) -> bool:
+    if not api_key or _is_internal_key(api_key):
+        return False
+    if VALID_API_KEY and api_key == VALID_API_KEY:
+        return True
+    return api_key.startswith("as_tok_")
+
+def get_rate_limit_key(request: Request) -> str:
+    """Dynamic API key resolution for tiered rate-limit buckets."""
+    api_key = _resolve_api_key(request)
+    if _is_internal_key(api_key):
+        return "internal-unlimited"
+    if _is_pro_key(api_key):
+        return f"pro:{api_key}"
+    return f"ip:{get_remote_address(request)}"
+
+limiter = Limiter(key_func=get_rate_limit_key)
+
 app = FastAPI(
     title="Agent Shield",
     description="Hardened Hybrid WAF & Prompt Injection Engine",
@@ -79,6 +113,39 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, lambda r, e: JSONResponse(
     status_code=429, content={"detail": "Rate limit exceeded"}
 ))
+
+@app.middleware("http")
+async def payload_size_guard(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length is not None:
+        try:
+            if int(content_length) > MAX_BODY_BYTES:
+                return JSONResponse(
+                    status_code=413,
+                    content={"detail": "Payload Too Large"},
+                )
+        except ValueError:
+            pass
+    return await call_next(request)
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    if "server" in response.headers:
+        del response.headers["server"]
+    if "x-powered-by" in response.headers:
+        del response.headers["x-powered-by"]
+    return response
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ALLOWED_ORIGINS if CORS_ALLOWED_ORIGINS else [],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "X-API-Key", "Authorization"],
+)
 app.add_middleware(SlowAPIMiddleware)
 
 # ── Mount auth routes ─────────────────────────────────────────────────────────
@@ -93,7 +160,7 @@ except Exception as e:
     raise
 
 class CheckRequest(BaseModel):
-    prompt: str = Field(..., min_length=1, max_length=10000)
+    prompt: str = Field(..., min_length=1, max_length=2000)
 
     @field_validator("prompt")
     @classmethod
@@ -115,8 +182,25 @@ class CheckResponse(BaseModel):
     latency_ms: float
     details: dict
 
+def _rate_limit_exempt_pro_or_internal(request: Request) -> bool:
+    api_key = _resolve_api_key(request)
+    return _is_internal_key(api_key) or _is_pro_key(api_key)
+
+def _rate_limit_exempt_non_pro(request: Request) -> bool:
+    api_key = _resolve_api_key(request)
+    return _is_internal_key(api_key) or not _is_pro_key(api_key)
+
 @app.post("/v1/check", response_model=CheckResponse)
-@limiter.limit("30/minute")
+@limiter.limit(
+    "10/minute",
+    key_func=get_remote_address,
+    exempt_when=_rate_limit_exempt_pro_or_internal,
+)
+@limiter.limit(
+    "60/minute",
+    key_func=lambda request: _resolve_api_key(request),
+    exempt_when=_rate_limit_exempt_non_pro,
+)
 async def check_prompt(request: Request, req: CheckRequest, api_key: str = Security(verify_api_key)):
     start_time = time.time()
     target_payload = req.prompt
@@ -199,4 +283,4 @@ async def metrics():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    uvicorn.run(app, host=os.environ.get("HOST", "127.0.0.1"), port=7860)
