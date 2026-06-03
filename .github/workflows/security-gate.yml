@@ -31,6 +31,8 @@ jobs:
           bandit -r . --exclude ./venv,./onnx_env,./tests -lll
           pip-audit
 
-      - name: Run Unit Tests and Request Schema Audits
-        run: |
-          python -m pytest tests/
+- name: Run Unit Tests and Request Schema Audits
+  env:
+    AGENT_SHIELD_API_KEY: ${{ secrets.AGENT_SHIELD_API_KEY }}
+  run: |
+    python -m pytest tests/
