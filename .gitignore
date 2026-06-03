@@ -7,3 +7,8 @@ __pycache__/
 .env
 *.log
 data/
+onnx_env/
+*.onnx
+*.bin
+.env
+security_audit.log
