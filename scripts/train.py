@@ -24,7 +24,7 @@ print(f"Train: {len(train_df)} | Eval: {len(eval_df)}")
 tokenizer = DistilBertTokenizer.from_pretrained("distilbert-base-uncased")
 
 def tokenize(examples):
-    return tokenizer(examples["prompt"], padding="max_length", truncation=True, max_length=256)
+    return tokenizer(examples["prompt"], padding="max_length", truncation=True, max_length=128)
 
 train_dataset = train_dataset.map(tokenize, batched=True)
 eval_dataset  = eval_dataset.map(tokenize, batched=True)
