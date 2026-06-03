@@ -5,6 +5,7 @@ from transformers import DistilBertTokenizer
 from onnxruntime import InferenceSession
 
 HF_MODEL = "Sandeep120205/agent-shield-distilbert"
+HF_REVISION = "8d9339cfe468013da01a581f3399c1c19c4f51a3"  # pin to verified commit
 MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
 LOCAL_TOKENIZER_PATH = os.path.join(MODEL_DIR, "fine_tuned_bert")
 ONNX_PATH = os.path.join(MODEL_DIR, "model.onnx")
@@ -39,6 +40,7 @@ class BertClassifier:
             try:
                 self.tokenizer = DistilBertTokenizer.from_pretrained(
                     HF_MODEL,
+                    revision=HF_REVISION,
                 )
             except Exception as e:
                 if not os.path.isdir(LOCAL_TOKENIZER_PATH):
@@ -48,7 +50,7 @@ class BertClassifier:
                 print(f"[!] HuggingFace tokenizer fetch failed, using local cache: {e}")
                 self.tokenizer = DistilBertTokenizer.from_pretrained(
                     LOCAL_TOKENIZER_PATH,
-                    local_files_only=True,
+                    local_files_only=True,  # nosec B615
                 )
 
             self.session = InferenceSession(ONNX_PATH, providers=["CPUExecutionProvider"])
