@@ -110,11 +110,27 @@ def get_api_key(explicit_key: str | None = None) -> str | None:
         return env_key
     return load_token()
 
+def _validate_http_url(url: str) -> str:
+    if not (url.startswith("http://") or url.startswith("https://")):
+        raise ValueError(
+            f"URL must use http:// or https:// scheme, got: {url!r}"
+        )
+    return url
+
+def safe_urlopen(url_or_request, timeout=10):
+    import urllib.request
+
+    if isinstance(url_or_request, urllib.request.Request):
+        target = url_or_request.full_url
+    else:
+        target = url_or_request
+    _validate_http_url(target)
+    return urllib.request.urlopen(url_or_request, timeout=timeout)  # nosec B310
+
 # ── Health check ─────────────────────────────────────────────────────────────
 def cmd_health():
     try:
-        import urllib.request
-        req = urllib.request.urlopen(f"{API_BASE}/health", timeout=8)
+        req = safe_urlopen(f"{API_BASE}/health", timeout=8)
         data = json.loads(req.read().decode())
         status = data.get("status", "unknown")
         if status in ("ok", "healthy"):
@@ -146,7 +162,7 @@ def cmd_auth(revoke: bool = False):
                 headers={"Content-Type": "application/json"},
                 method="POST"
             )
-            urllib.request.urlopen(req, timeout=10)
+            safe_urlopen(req, timeout=10)
         except Exception:
             pass  # revoke best-effort
         delete_token()
@@ -205,7 +221,7 @@ def cmd_check(prompt: str, api_key: str):
             },
             method="POST"
         )
-        with urllib.request.urlopen(req, timeout=15) as resp:
+        with safe_urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode())
 
         verdict  = data.get("verdict", "UNKNOWN")
