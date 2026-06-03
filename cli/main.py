@@ -111,9 +111,9 @@ def get_api_key(explicit_key: str | None = None) -> str | None:
     return load_token()
 
 def _validate_http_url(url: str) -> str:
-    if not (url.startswith("http://") or url.startswith("https://")):
+    if not url.startswith("https://"):
         raise ValueError(
-            f"URL must use http:// or https:// scheme, got: {url!r}"
+            f"URL must use https:// scheme, got: {url!r}"
         )
     return url
 
