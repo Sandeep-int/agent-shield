@@ -5,7 +5,9 @@ from transformers import DistilBertTokenizer
 from onnxruntime import InferenceSession
 
 HF_MODEL = "Sandeep120205/agent-shield-distilbert"
+HF_REVISION = "8d9339cfe468013da01a581f3399c1c19c4f51a3"  # pin to verified commit
 MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
+LOCAL_TOKENIZER_PATH = os.path.join(MODEL_DIR, "fine_tuned_bert")
 ONNX_PATH = os.path.join(MODEL_DIR, "model.onnx")
 ONNX_DATA_PATH = os.path.join(MODEL_DIR, "model.onnx.data")
 BLOB_ONNX = "https://agentshieldmodels.blob.core.windows.net/models/model.onnx"
@@ -25,11 +27,32 @@ def download_file(url: str, dest: str):
 class BertClassifier:
     def __init__(self):
         try:
-            if not os.path.exists(ONNX_PATH):
-                download_file(BLOB_ONNX, ONNX_PATH)
-            if not os.path.exists(ONNX_DATA_PATH):
-                download_file(BLOB_ONNX_DATA, ONNX_DATA_PATH)
-            self.tokenizer = DistilBertTokenizer.from_pretrained(HF_MODEL)
+            try:
+                if not os.path.exists(ONNX_PATH):
+                    download_file(BLOB_ONNX, ONNX_PATH)
+                if not os.path.exists(ONNX_DATA_PATH):
+                    download_file(BLOB_ONNX_DATA, ONNX_DATA_PATH)
+            except Exception as e:
+                if not os.path.exists(ONNX_PATH):
+                    raise RuntimeError(f"L2 ONNX unavailable and no local cache: {e}") from e
+                print(f"[!] Blob download failed, using cached ONNX weights: {e}")
+
+            try:
+                self.tokenizer = DistilBertTokenizer.from_pretrained(
+                    HF_MODEL,
+                    revision=HF_REVISION,
+                )
+            except Exception as e:
+                if not os.path.isdir(LOCAL_TOKENIZER_PATH):
+                    raise RuntimeError(
+                        f"L2 tokenizer load failed and no local cache at {LOCAL_TOKENIZER_PATH}: {e}"
+                    ) from e
+                print(f"[!] HuggingFace tokenizer fetch failed, using local cache: {e}")
+                self.tokenizer = DistilBertTokenizer.from_pretrained(
+                    LOCAL_TOKENIZER_PATH,
+                    local_files_only=True,  # nosec B615
+                )
+
             self.session = InferenceSession(ONNX_PATH, providers=["CPUExecutionProvider"])
             print("[✓] L2: ONNX model loaded")
         except Exception as e:
