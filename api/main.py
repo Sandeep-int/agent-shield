@@ -33,16 +33,11 @@ async def verify_api_key(api_key: str = Security(api_key_header)):
     if not api_key:
         logger.warning("Unauthorized — missing API key")
         raise HTTPException(status_code=401, detail="Unauthorized. Valid X-API-Key required.")
-
-    # Priority 1 — master env key (backward compatible)
     if VALID_API_KEY and api_key == VALID_API_KEY:
         return api_key
-
-    # Priority 2 — OAuth token from Azure Table
     token_data = validate_token(api_key)
     if token_data:
         return api_key
-
     logger.warning(f"Unauthorized — invalid key: {api_key[:8]}...")
     raise HTTPException(status_code=401, detail="Unauthorized. Valid X-API-Key required.")
 
@@ -94,7 +89,6 @@ def _is_pro_key(api_key: str) -> bool:
     return api_key.startswith("as_tok_")
 
 def get_rate_limit_key(request: Request) -> str:
-    """Dynamic API key resolution for tiered rate-limit buckets."""
     api_key = _resolve_api_key(request)
     if _is_internal_key(api_key):
         return "internal-unlimited"
@@ -148,7 +142,6 @@ app.add_middleware(
     allow_headers=["Content-Type", "X-API-Key", "Authorization"],
 )
 
-# ── Mount auth routes ─────────────────────────────────────────────────────────
 app.include_router(auth_router)
 
 try:
@@ -248,27 +241,26 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
         details={"all_checks": "verified_clean"}
     )
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
 @app.get("/metrics")
 async def metrics():
     try:
         from azure.data.tables import TableServiceClient
         service = TableServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
         table = service.get_table_client("agentshieldlogs")
-
         entities = list(table.list_entities())
-
         total = len(entities)
         block_count = sum(1 for e in entities if e.get("verdict") == "BLOCK")
         allow_count = sum(1 for e in entities if e.get("verdict") == "ALLOW")
-
         layer_counts = {}
         for e in entities:
             layer = e.get("layer_hit", "UNKNOWN")
             layer_counts[layer] = layer_counts.get(layer, 0) + 1
-
         latencies = [e.get("latency_ms", 0) for e in entities if e.get("latency_ms")]
         avg_latency = round(sum(latencies) / len(latencies), 2) if latencies else 0
-
         return {
             "total_requests": total,
             "block_count": block_count,
@@ -283,4 +275,4 @@ async def metrics():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host=os.environ.get("HOST", "127.0.0.1"), port=7860)
+    uvicorn.run(app, host=os.environ.get("HOST", "0.0.0.0"), port=7860)  # nosec B104
