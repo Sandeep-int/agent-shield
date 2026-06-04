@@ -30,25 +30,11 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        id: pip-cache
-        with:
-          path: ~/.cache/pip
-          key: pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: pip-
-
-      - name: Install System Dependencies
-        if: steps.pip-cache.outputs.cache-hit != 'true'
+      - name: Install dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest bandit pip-audit
-
-      - name: Install audit tools only (cached run)
-        if: steps.pip-cache.outputs.cache-hit == 'true'
-        run: |
-          pip install pytest bandit pip-audit --quiet
 
       - name: Execute Pipeline Integrity Audits
         run: |
