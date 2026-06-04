@@ -44,18 +44,19 @@ async def verify_api_key(api_key: str = Security(api_key_header)):
     logger.warning(f"Unauthorized — invalid key: {api_key[:8]}...")
     raise HTTPException(status_code=401, detail="Unauthorized. Valid X-API-Key required.")
 
+_PII_REDACTIONS = (
+    (re.compile(r"\b(?:\d{4}[-\s]?){3}\d{4}\b"), "[CARD_REDACTED]"),
+    (re.compile(r"\b\d{3}-\d{2}-\d{4}\b"), "[SSN_REDACTED]"),
+    (re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"), "[EMAIL_REDACTED]"),
+    (re.compile(r"api[_-]?key\s*[:=]\s*[\"']?[\w\-]+", re.IGNORECASE), "[APIKEY_REDACTED]"),
+    (re.compile(r"(?:password|passwd|pwd)\s*[:=]\s*[\"']?[\w@#$%^&*]+", re.IGNORECASE), "[PASSWORD_REDACTED]"),
+)
+
+
 def sanitize_prompt(prompt: str) -> str:
-    """Strip PII from prompt before logging to Azure Table."""
-    # Credit card
-    prompt = re.sub(r'\b(?:\d{4}[-\s]?){3}\d{4}\b', '[CARD_REDACTED]', prompt)
-    # SSN
-    prompt = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[SSN_REDACTED]', prompt)
-    # Email
-    prompt = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', '[EMAIL_REDACTED]', prompt)
-    # API key patterns
-    prompt = re.sub(r'(api[_-]?key|apikey)\s*[:=]\s*["\']?[\w\-]+', '[APIKEY_REDACTED]', prompt, flags=re.IGNORECASE)
-    # Password patterns
-    prompt = re.sub(r'(password|passwd|pwd)\s*[:=]\s*["\']?[\w@#$%^&*]+', '[PASSWORD_REDACTED]', prompt, flags=re.IGNORECASE)
+    """Redact common PII/secrets patterns from the prompt before logging to Azure Table."""
+    for pattern, replacement in _PII_REDACTIONS:
+        prompt = pattern.sub(replacement, prompt)
     return prompt
 
 def log_to_azure(prompt, verdict, confidence, layer_hit, latency_ms, client_ip):
