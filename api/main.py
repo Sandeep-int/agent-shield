@@ -213,8 +213,13 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
         logger.error(f"L1 Error: {e}")
         raise HTTPException(status_code=500, detail="Inspection failed.")
 
-    try:
-        bert_result = classifier.classify(target_payload)
+try:
+        import asyncio
+        loop = asyncio.get_event_loop()
+        bert_result = await asyncio.wait_for(
+            loop.run_in_executor(None, classifier.classify, target_payload),
+            timeout=10.0
+        )
         if bert_result.get("is_injection") and bert_result.get("confidence", 0) > 0.75:
             latency = (time.time() - start_time) * 1000
             log_to_azure(target_payload, "BLOCK", bert_result["confidence"], "L2_ONNX_MODEL", latency, client_ip)
@@ -225,6 +230,17 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
                 latency_ms=latency,
                 details={"model_confidence": bert_result["confidence"]}
             )
+    except asyncio.TimeoutError:
+        latency = (time.time() - start_time) * 1000
+        logger.error("L2 timeout — blocking as safe default")
+        log_to_azure(target_payload, "BLOCK", 0.99, "L2_TIMEOUT_BLOCK", latency, client_ip)
+        return CheckResponse(
+            verdict="BLOCK",
+            confidence=0.99,
+            layer_hit="L2_TIMEOUT_BLOCK",
+            latency_ms=latency,
+            details={"reason": "L2 inference timeout — blocked by policy"}
+        )
     except Exception as e:
         logger.error(f"L2 Error: {e}")
         raise HTTPException(status_code=500, detail="Model inference failed.")
