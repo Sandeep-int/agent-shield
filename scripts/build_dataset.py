@@ -5,7 +5,7 @@ all_dfs = []
 
 # Source 1: deepset/prompt-injections
 print("[*] Loading deepset/prompt-injections...")
-ds1 = load_dataset("deepset/prompt-injections")
+ds1 = load_dataset("deepset/prompt-injections", revision="4f61ecb038e9c3fb77e21034b22511b523772cdd")
 df1 = pd.concat([ds1["train"].to_pandas(), ds1["test"].to_pandas()])
 df1 = df1.rename(columns={"text": "prompt"})
 df1 = df1[["prompt", "label"]]
@@ -14,7 +14,7 @@ all_dfs.append(df1)
 
 # Source 2: jackhhao/jailbreak-classification
 print("[*] Loading jackhhao/jailbreak-classification...")
-ds2 = load_dataset("jackhhao/jailbreak-classification")
+ds2 = load_dataset("jackhhao/jailbreak-classification",revision="2f2ceeb39658696fd3f462403562b6eea5306287")
 df2 = pd.concat([ds2["train"].to_pandas(), ds2["test"].to_pandas()])
 df2 = df2.rename(columns={"type": "label"})
 df2["label"] = df2["label"].map({"jailbreak": 1, "benign": 0})

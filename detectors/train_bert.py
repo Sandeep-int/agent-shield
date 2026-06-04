@@ -31,7 +31,7 @@ class PromptDataset(Dataset):
 
 def train():
     print("Loading dataset...")
-    ds = load_dataset('deepset/prompt-injections')
+    ds = load_dataset('deepset/prompt-injections', revision="4f61ecb038e9c3fb77e21034b22511b523772cdd")
     
     train_texts = list(ds['train']['text'])
     train_labels = list(ds['train']['label'])
@@ -39,7 +39,7 @@ def train():
     test_labels = list(ds['test']['label'])
 
     print("Loading tokenizer...")
-    tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
+    tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased', revision="4f61ecb038e9c3fb77e21034b22511b523772cdd")
 
     print("Tokenizing data...")
     train_dataset = PromptDataset(train_texts, train_labels, tokenizer)
@@ -50,9 +50,10 @@ def train():
 
     print("Loading model...")
     model = DistilBertForSequenceClassification.from_pretrained(
-        'distilbert-base-uncased',
-        num_labels=2
-    )
+    'distilbert-base-uncased',
+    revision="4f61ecb038e9c3fb77e21034b22511b523772cdd",
+    num_labels=2
+)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")

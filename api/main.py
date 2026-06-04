@@ -222,7 +222,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
             loop.run_in_executor(None, classifier.classify, target_payload),
             timeout=10.0
         )
-        if bert_result.get("is_injection") and bert_result.get("confidence", 0) > 0.75:
+        if bert_result.get("is_injection"):
             latency = (time.time() - start_time) * 1000
             log_to_azure(target_payload, "BLOCK", bert_result["confidence"], "L2_ONNX_MODEL", latency, client_ip)
             return CheckResponse(
