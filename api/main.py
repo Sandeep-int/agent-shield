@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from detectors.vigil_scanner import VigilScanner
 from detectors.bert_classifier import BertClassifier
+from detectors.l3_custom import CustomL3
 from api.auth import router as auth_router, validate_token
 
 logging.basicConfig(level=logging.INFO)
@@ -148,7 +149,8 @@ app.include_router(auth_router)
 try:
     scanner    = VigilScanner()
     classifier = BertClassifier()
-    logger.info("✓ Security Engine Loaded: L0, L1, L2")
+    l3 = CustomL3()
+    logger.info("✓ Security Engine Loaded: L0, L1, L2, L3")
 except Exception as e:
     logger.critical(f"FATAL: Core engine failed: {e}")
     raise
@@ -244,6 +246,18 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
     except Exception as e:
         logger.error(f"L2 Error: {e}")
         raise HTTPException(status_code=500, detail="Model inference failed.")
+
+    l3_result = l3.check(target_payload)
+    if not l3_result.get("passed"):
+        total_latency = (time.time() - start_time) * 1000
+        log_to_azure(target_payload, "BLOCK", 0.99, "L3_CUSTOM_RULES", total_latency, client_ip)
+        return CheckResponse(
+            verdict="BLOCK",
+            confidence=0.99,
+            layer_hit="L3_CUSTOM_RULES",
+            latency_ms=total_latency,
+            details={"reason": l3_result.get("reason")}
+        )
 
     total_latency = (time.time() - start_time) * 1000
     log_to_azure(target_payload, "ALLOW", 0.00, "COMPREHENSIVE_PASS", total_latency, client_ip)
