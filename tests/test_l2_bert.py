@@ -14,11 +14,11 @@ def test_jailbreak_blocked(classifier):
     assert result["is_injection"] == True
 
 def test_normal_allowed(classifier):
-    result = classifier.classify("what is Python?")
+    result = classifier.classify("What is the capital of France?")
     assert result["is_injection"] == False
 
 def test_normal_allowed_2(classifier):
-    result = classifier.classify("what is the weather today")
+    result = classifier.classify("How do I bake a chocolate cake?")
     assert result["is_injection"] == False
 
 def test_confidence_range(classifier):
