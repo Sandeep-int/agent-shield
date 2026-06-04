@@ -194,6 +194,9 @@ class CheckResponse(BaseModel):
     latency_ms: float
     details: dict
 
+class FeedbackRequest(CheckRequest):
+    reason: str = Field(..., min_length=1, max_length=500)
+
 def _rate_limit_exempt_pro_or_internal() -> bool:
     return False  # handled by get_rate_limit_key bucket
 
@@ -317,6 +320,18 @@ async def metrics():
         logger.error(f"Metrics error: {e}")
         raise HTTPException(status_code=500, detail="Metrics unavailable")
 
+
+@app.post("/v1/feedback")
+@limiter.limit("10/minute", key_func=get_remote_address)
+@limiter.limit("60/minute", key_func=lambda request: _resolve_api_key(request), exempt_when=_rate_limit_exempt_non_pro)
+async def feedback(request: Request, req: FeedbackRequest, api_key: str = Security(verify_api_key)):
+    client_ip = get_remote_address(request)
+    try:
+        log_to_azure(f"{req.prompt}\n[feedback_reason] {req.reason}", "MISSED", 0.00, "USER_REPORTED", 0.0, client_ip)
+    except Exception as e:
+        logger.error(f"Feedback log failed: {e}")
+        raise HTTPException(status_code=500, detail="Feedback logging failed.")
+    return {"status": "logged", "verdict": "MISSED"}
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host=os.environ.get("HOST", "0.0.0.0"), port=7860)  # nosec B104
