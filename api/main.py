@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 import time
@@ -213,8 +214,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
         logger.error(f"L1 Error: {e}")
         raise HTTPException(status_code=500, detail="Inspection failed.")
 
-try:
-        import asyncio
+    try:
         loop = asyncio.get_event_loop()
         bert_result = await asyncio.wait_for(
             loop.run_in_executor(None, classifier.classify, target_payload),
