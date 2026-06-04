@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 import sys
 import time
 import logging
@@ -43,6 +44,20 @@ async def verify_api_key(api_key: str = Security(api_key_header)):
     logger.warning(f"Unauthorized — invalid key: {api_key[:8]}...")
     raise HTTPException(status_code=401, detail="Unauthorized. Valid X-API-Key required.")
 
+def sanitize_prompt(prompt: str) -> str:
+    """Strip PII from prompt before logging to Azure Table."""
+    # Credit card
+    prompt = re.sub(r'\b(?:\d{4}[-\s]?){3}\d{4}\b', '[CARD_REDACTED]', prompt)
+    # SSN
+    prompt = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[SSN_REDACTED]', prompt)
+    # Email
+    prompt = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', '[EMAIL_REDACTED]', prompt)
+    # API key patterns
+    prompt = re.sub(r'(api[_-]?key|apikey)\s*[:=]\s*["\']?[\w\-]+', '[APIKEY_REDACTED]', prompt, flags=re.IGNORECASE)
+    # Password patterns
+    prompt = re.sub(r'(password|passwd|pwd)\s*[:=]\s*["\']?[\w@#$%^&*]+', '[PASSWORD_REDACTED]', prompt, flags=re.IGNORECASE)
+    return prompt
+
 def log_to_azure(prompt, verdict, confidence, layer_hit, latency_ms, client_ip):
     try:
         from azure.data.tables import TableServiceClient
@@ -55,7 +70,7 @@ def log_to_azure(prompt, verdict, confidence, layer_hit, latency_ms, client_ip):
         entity = {
             "PartitionKey": verdict,
             "RowKey": str(time.time_ns()),
-            "prompt": prompt[:500],
+            "prompt": sanitize_prompt(prompt)[:500],
             "verdict": verdict,
             "confidence": float(confidence),
             "layer_hit": layer_hit,
