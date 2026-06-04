@@ -175,13 +175,11 @@ class CheckResponse(BaseModel):
     latency_ms: float
     details: dict
 
-def _rate_limit_exempt_pro_or_internal(request: Request) -> bool:
-    api_key = _resolve_api_key(request)
-    return _is_internal_key(api_key) or _is_pro_key(api_key)
+def _rate_limit_exempt_pro_or_internal() -> bool:
+    return False  # handled by get_rate_limit_key bucket
 
-def _rate_limit_exempt_non_pro(request: Request) -> bool:
-    api_key = _resolve_api_key(request)
-    return _is_internal_key(api_key) or not _is_pro_key(api_key)
+def _rate_limit_exempt_non_pro() -> bool:
+    return False  # handled by get_rate_limit_key bucket
 
 @app.post("/v1/check", response_model=CheckResponse)
 @limiter.limit(
