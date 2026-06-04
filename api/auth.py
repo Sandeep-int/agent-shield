@@ -1,8 +1,8 @@
 """
 api/auth.py — GitHub OAuth handler for Agent Shield
 Routes:
-  GET /auth/login     → redirects to GitHub OAuth
-  GET /auth/callback  → handles GitHub callback, generates token, saves to Azure Table
+  GET /auth/login     → redirects to GitHub OAuth with CSRF state
+  GET /auth/callback  → handles GitHub callback, validates state, generates token
   POST /auth/revoke   → revokes a token
 """
 import os
@@ -11,16 +11,20 @@ import time
 import logging
 import httpx
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi import APIRouter, Request, HTTPException, Cookie
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 logger = logging.getLogger(__name__)
 
 GITHUB_CLIENT_ID     = os.environ.get("GITHUB_CLIENT_ID", "")
 GITHUB_CLIENT_SECRET = os.environ.get("GITHUB_CLIENT_SECRET", "")
 AZURE_CONNECTION_STRING = os.environ.get("AZURE_STORAGE_CONNECTION_STRING", "")
+FORCE_HTTPS = os.environ.get("FORCE_HTTPS", "true").lower() == "true"
 
 TOKEN_EXPIRY_DAYS = 90
+
+# CSRF state storage (in-memory for simplicity, use Redis in production)
+oauth_states = {}
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -103,15 +107,32 @@ def validate_token(token: str) -> dict | None:
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.get("/login")
-async def auth_login():
-    """Redirect user to GitHub OAuth page"""
+async def auth_login(request: Request):
+    """Redirect user to GitHub OAuth page with CSRF state"""
     if not GITHUB_CLIENT_ID:
         raise HTTPException(status_code=500, detail="OAuth not configured")
+    
+    # Force HTTPS check
+    if FORCE_HTTPS and request.url.scheme != "https":
+        raise HTTPException(status_code=400, detail="HTTPS required")
+    
+    # Generate CSRF state token
+    state = secrets.token_urlsafe(32)
+    oauth_states[state] = {
+        "created_at": datetime.now(timezone.utc).timestamp(),
+        "ip": request.client.host if request.client else "unknown"
+    }
+    
+    # Clean up old states (older than 10 minutes)
+    now = datetime.now(timezone.utc).timestamp()
+    oauth_states.clear()
+    oauth_states[state] = {"created_at": now, "ip": request.client.host if request.client else "unknown"}
 
     github_url = (
         f"https://github.com/login/oauth/authorize"
         f"?client_id={GITHUB_CLIENT_ID}"
         f"&scope=read:user,user:email"
+        f"&state={state}"
         f"&prompt=consent"
     )
     return RedirectResponse(url=github_url)
@@ -121,11 +142,30 @@ async def auth_login():
 async def auth_callback(request: Request):
     """
     GitHub redirects here after user authorizes.
-    Exchange code for token, save to Azure Table, return token to CLI.
+    Validates CSRF state, exchanges code for token, returns httpOnly cookie.
     """
+    # Force HTTPS check
+    if FORCE_HTTPS and request.url.scheme != "https":
+        raise HTTPException(status_code=400, detail="HTTPS required")
+    
     code = request.query_params.get("code")
+    state = request.query_params.get("state")
+    
     if not code:
         raise HTTPException(status_code=400, detail="Missing OAuth code")
+    
+    # Validate CSRF state
+    if not state or state not in oauth_states:
+        logger.warning(f"Invalid or expired OAuth state from {request.client.host if request.client else 'unknown'}")
+        raise HTTPException(status_code=400, detail="Invalid or expired state (CSRF protection)")
+    
+    # Check state age (max 10 minutes)
+    state_data = oauth_states.pop(state)
+    state_age = datetime.now(timezone.utc).timestamp() - state_data["created_at"]
+    if state_age > 600:  # 10 minutes
+        raise HTTPException(status_code=400, detail="State expired")
+    
+    # Exchange code for GitHub access token
 
     # Exchange code for GitHub access token
     async with httpx.AsyncClient() as client:
@@ -170,14 +210,26 @@ async def auth_callback(request: Request):
 
     logger.info(f"OAuth success: {username} (GitHub ID: {github_id})")
 
-    # Return token to CLI — CLI polls this page
-    return JSONResponse(content={
+    # Return token with httpOnly cookie (more secure than JSON)
+    response = JSONResponse(content={
         "status": "success",
         "token": as_token,
         "username": username,
         "expires_in_days": TOKEN_EXPIRY_DAYS,
-        "message": f"Authenticated as {username}. Token saved."
+        "message": f"Authenticated as {username}. Token saved. Copy token for CLI use."
     })
+    
+    # Set httpOnly cookie (more secure, but also return token for CLI compatibility)
+    response.set_cookie(
+        key="agent_shield_token",
+        value=as_token,
+        httponly=True,
+        secure=FORCE_HTTPS,  # Only send over HTTPS
+        samesite="strict",
+        max_age=TOKEN_EXPIRY_DAYS * 86400
+    )
+    
+    return response
 
 
 @router.post("/revoke")

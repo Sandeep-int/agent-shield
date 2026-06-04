@@ -23,12 +23,13 @@ from detectors.vigil_scanner import VigilScanner
 from detectors.bert_classifier import BertClassifier
 from detectors.l3_custom import CustomL3
 from api.auth import router as auth_router, validate_token
+from api.secrets_manager import get_secret
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-VALID_API_KEY           = os.environ.get("AGENT_SHIELD_API_KEY", "")
-AZURE_CONNECTION_STRING = os.environ.get("AZURE_STORAGE_CONNECTION_STRING", "")
+VALID_API_KEY           = get_secret("AGENT_SHIELD_API_KEY", "")
+AZURE_CONNECTION_STRING = get_secret("AZURE_STORAGE_CONNECTION_STRING", "")
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -260,11 +261,19 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
             confidence=0.99,
             layer_hit="L2_TIMEOUT_BLOCK",
             latency_ms=latency,
-            details={"reason": "L2 inference timeout — blocked by policy"}
+            details={"reason": "L2 inference timeout — blocked by fail-safe policy"}
         )
     except Exception as e:
-        logger.error(f"L2 Error: {e}")
-        raise HTTPException(status_code=500, detail="Model inference failed.")
+        latency = (time.time() - start_time) * 1000
+        logger.error(f"L2 Error: {e} — blocking as safe default")
+        log_to_azure(target_payload, "BLOCK", 0.99, "L2_ERROR_BLOCK", latency, client_ip)
+        return CheckResponse(
+            verdict="BLOCK",
+            confidence=0.99,
+            layer_hit="L2_ERROR_BLOCK",
+            latency_ms=latency,
+            details={"reason": f"L2 inference error — blocked by fail-safe policy: {str(e)[:100]}"}
+        )
 
     l3_result = l3.check(target_payload)
     if not l3_result.get("passed"):
@@ -293,7 +302,7 @@ async def health():
     return {"status": "ok"}
 
 @app.get("/metrics")
-async def metrics():
+async def metrics(api_key: str = Security(verify_api_key)):
     try:
         from azure.data.tables import TableServiceClient
         service = TableServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
