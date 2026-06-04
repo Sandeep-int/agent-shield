@@ -323,6 +323,7 @@ async def metrics():
 
 @app.post("/v1/feedback")
 @limiter.limit("10/minute", key_func=get_remote_address)
+@limiter.limit("60/minute", key_func=lambda request: _resolve_api_key(request), exempt_when=_rate_limit_exempt_non_pro)
 async def feedback(request: Request, req: FeedbackRequest, api_key: str = Security(verify_api_key)):
     client_ip = get_remote_address(request)
     try:
