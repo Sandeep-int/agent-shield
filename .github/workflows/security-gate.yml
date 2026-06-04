@@ -1,18 +1,28 @@
 name: Agent Shield Production Pipeline
+
 on:
   push:
     branches: [ main, dev ]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'docs/**'
   pull_request:
     branches: [ main ]
 
 jobs:
   security-and-testing-gate:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Crucial for SonarCloud tracking and analysis
+          fetch-depth: 1
 
       - name: Initialize Python Runtime Env
         uses: actions/setup-python@v5
@@ -20,19 +30,19 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install System Dependencies
+      - name: Install dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest bandit pip-audit
 
       - name: Execute Pipeline Integrity Audits
         run: |
           bandit -r . --exclude ./venv,./onnx_env,./tests -lll
-          pip-audit
+          pip-audit -r requirements.txt
 
-- name: Run Unit Tests and Request Schema Audits
-  env:
-    AGENT_SHIELD_API_KEY: ${{ secrets.AGENT_SHIELD_API_KEY }}
-  run: |
-    python -m pytest tests/
+      - name: Run Unit Tests and Request Schema Audits
+        env:
+          AGENT_SHIELD_API_KEY: ${{ secrets.AGENT_SHIELD_API_KEY }}
+        run: |
+          python -m pytest tests/ -x --tb=short

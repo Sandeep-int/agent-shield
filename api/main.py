@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 import time
@@ -19,6 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from detectors.vigil_scanner import VigilScanner
 from detectors.bert_classifier import BertClassifier
+from detectors.l3_custom import CustomL3
 from api.auth import router as auth_router, validate_token
 
 logging.basicConfig(level=logging.INFO)
@@ -147,7 +149,8 @@ app.include_router(auth_router)
 try:
     scanner    = VigilScanner()
     classifier = BertClassifier()
-    logger.info("✓ Security Engine Loaded: L0, L1, L2")
+    l3 = CustomL3()
+    logger.info("✓ Security Engine Loaded: L0, L1, L2, L3")
 except Exception as e:
     logger.critical(f"FATAL: Core engine failed: {e}")
     raise
@@ -175,13 +178,11 @@ class CheckResponse(BaseModel):
     latency_ms: float
     details: dict
 
-def _rate_limit_exempt_pro_or_internal(request: Request) -> bool:
-    api_key = _resolve_api_key(request)
-    return _is_internal_key(api_key) or _is_pro_key(api_key)
+def _rate_limit_exempt_pro_or_internal() -> bool:
+    return False  # handled by get_rate_limit_key bucket
 
-def _rate_limit_exempt_non_pro(request: Request) -> bool:
-    api_key = _resolve_api_key(request)
-    return _is_internal_key(api_key) or not _is_pro_key(api_key)
+def _rate_limit_exempt_non_pro() -> bool:
+    return False  # handled by get_rate_limit_key bucket
 
 @app.post("/v1/check", response_model=CheckResponse)
 @limiter.limit(
@@ -216,8 +217,12 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
         raise HTTPException(status_code=500, detail="Inspection failed.")
 
     try:
-        bert_result = classifier.classify(target_payload)
-        if bert_result.get("is_injection") and bert_result.get("confidence", 0) > 0.75:
+        loop = asyncio.get_event_loop()
+        bert_result = await asyncio.wait_for(
+            loop.run_in_executor(None, classifier.classify, target_payload),
+            timeout=10.0
+        )
+        if bert_result.get("is_injection"):
             latency = (time.time() - start_time) * 1000
             log_to_azure(target_payload, "BLOCK", bert_result["confidence"], "L2_ONNX_MODEL", latency, client_ip)
             return CheckResponse(
@@ -227,9 +232,32 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
                 latency_ms=latency,
                 details={"model_confidence": bert_result["confidence"]}
             )
+    except asyncio.TimeoutError:
+        latency = (time.time() - start_time) * 1000
+        logger.error("L2 timeout — blocking as safe default")
+        log_to_azure(target_payload, "BLOCK", 0.99, "L2_TIMEOUT_BLOCK", latency, client_ip)
+        return CheckResponse(
+            verdict="BLOCK",
+            confidence=0.99,
+            layer_hit="L2_TIMEOUT_BLOCK",
+            latency_ms=latency,
+            details={"reason": "L2 inference timeout — blocked by policy"}
+        )
     except Exception as e:
         logger.error(f"L2 Error: {e}")
         raise HTTPException(status_code=500, detail="Model inference failed.")
+
+    l3_result = l3.check(target_payload)
+    if not l3_result.get("passed"):
+        total_latency = (time.time() - start_time) * 1000
+        log_to_azure(target_payload, "BLOCK", 0.99, "L3_CUSTOM_RULES", total_latency, client_ip)
+        return CheckResponse(
+            verdict="BLOCK",
+            confidence=0.99,
+            layer_hit="L3_CUSTOM_RULES",
+            latency_ms=total_latency,
+            details={"reason": l3_result.get("reason")}
+        )
 
     total_latency = (time.time() - start_time) * 1000
     log_to_azure(target_payload, "ALLOW", 0.00, "COMPREHENSIVE_PASS", total_latency, client_ip)

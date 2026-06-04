@@ -76,8 +76,9 @@ class BertClassifier:
             probs = np.exp(logits) / np.exp(logits).sum(axis=1, keepdims=True)
             predicted_class = int(np.argmax(probs, axis=1)[0])
             confidence = float(probs[0][predicted_class])
+            THRESHOLD = 0.85
             return {
-                "is_injection": predicted_class == 1,
+                "is_injection": predicted_class == 1 and confidence > THRESHOLD,
                 "confidence": confidence,
                 "latency_ms": (time.time() - start) * 1000
             }

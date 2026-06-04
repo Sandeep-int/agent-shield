@@ -21,7 +21,7 @@ eval_dataset  = Dataset.from_pandas(eval_df.reset_index(drop=True))
 print(f"Train: {len(train_df)} | Eval: {len(eval_df)}")
 
 # ── 2. Tokenize
-tokenizer = DistilBertTokenizer.from_pretrained("distilbert-base-uncased")
+tokenizer = DistilBertTokenizer.from_pretrained("distilbert-base-uncased", revision="4f61ecb038e9c3fb77e21034b22511b523772cdd")
 
 def tokenize(examples):
     return tokenizer(examples["prompt"], padding="max_length", truncation=True, max_length=128)
@@ -41,7 +41,7 @@ def compute_metrics(eval_pred):
 
 # ── 4. Model
 model = DistilBertForSequenceClassification.from_pretrained(
-    "distilbert-base-uncased", num_labels=2
+    "distilbert-base-uncased", revision="4f61ecb038e9c3fb77e21034b22511b523772cdd", num_labels=2
 )
 
 # ── 5. Training args — CPU optimized
