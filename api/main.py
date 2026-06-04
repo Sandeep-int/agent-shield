@@ -325,7 +325,11 @@ async def metrics():
 @limiter.limit("10/minute", key_func=get_remote_address)
 async def feedback(request: Request, req: FeedbackRequest, api_key: str = Security(verify_api_key)):
     client_ip = get_remote_address(request)
-    log_to_azure(f"{req.prompt}\n[feedback_reason] {req.reason}", "MISSED", 0.00, "USER_REPORTED", 0.0, client_ip)
+    try:
+        log_to_azure(f"{req.prompt}\n[feedback_reason] {req.reason}", "MISSED", 0.00, "USER_REPORTED", 0.0, client_ip)
+    except Exception as e:
+        logger.error(f"Feedback log failed: {e}")
+        raise HTTPException(status_code=500, detail="Feedback logging failed.")
     return {"status": "logged", "verdict": "MISSED"}
 if __name__ == "__main__":
     import uvicorn
