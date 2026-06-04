@@ -39,7 +39,7 @@ jobs:
       - name: Execute Pipeline Integrity Audits
         run: |
           bandit -r . --exclude ./venv,./onnx_env,./tests -lll
-          pip-audit
+          pip-audit -r requirements.txt
 
       - name: Run Unit Tests and Request Schema Audits
         env:
