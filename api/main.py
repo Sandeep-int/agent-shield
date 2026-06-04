@@ -194,8 +194,7 @@ class CheckResponse(BaseModel):
     latency_ms: float
     details: dict
 
-class FeedbackRequest(BaseModel):
-    prompt: str = Field(..., min_length=1, max_length=2000)
+class FeedbackRequest(CheckRequest):
     reason: str = Field(..., min_length=1, max_length=500)
 
 def _rate_limit_exempt_pro_or_internal() -> bool:
@@ -326,7 +325,7 @@ async def metrics():
 @limiter.limit("10/minute", key_func=get_remote_address)
 async def feedback(request: Request, req: FeedbackRequest, api_key: str = Security(verify_api_key)):
     client_ip = get_remote_address(request)
-    log_to_azure(req.prompt, "MISSED", 0.00, "USER_REPORTED", 0.0, client_ip)
+    log_to_azure(f"{req.prompt}\n[feedback_reason] {req.reason}", "MISSED", 0.00, "USER_REPORTED", 0.0, client_ip)
     return {"status": "logged", "verdict": "MISSED"}
 if __name__ == "__main__":
     import uvicorn
