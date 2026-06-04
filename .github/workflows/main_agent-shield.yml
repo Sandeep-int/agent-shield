@@ -24,20 +24,47 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-          cache: 'pip'                    # ← Built-in pip cache
+          cache: 'pip'
 
-      - name: Install dependencies
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        id: pip-cache
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: pip-
+
+      - name: Install dependencies only if changed
+        if: steps.pip-cache.outputs.cache-hit != 'true'
         run: pip install -r requirements.txt
 
-      - name: Zip artifact (exclude junk)
-        run: zip -r release.zip . -x "*.git*" "*.md" "__pycache__/*" "*.pyc" "tests/*"
+      - name: Install dependencies (cached — verify only)
+        if: steps.pip-cache.outputs.cache-hit == 'true'
+        run: pip install -r requirements.txt --dry-run
+
+      - name: Zip artifact (exclude heavy/junk files)
+        run: |
+          zip -r release.zip . \
+            -x "*.git*" \
+            -x "*.md" \
+            -x "__pycache__/*" \
+            -x "*.pyc" \
+            -x "tests/*" \
+            -x "models/*" \
+            -x "*.onnx" \
+            -x "*.bin" \
+            -x "venv/*" \
+            -x "onnx_env/*" \
+            -x ".github/*" \
+            -x "scripts/*" \
+            -x "*.egg-info/*"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: python-app
           path: release.zip
-          retention-days: 1              # ← Don't store artifacts forever
+          retention-days: 1
 
   deploy:
     runs-on: ubuntu-latest
@@ -52,9 +79,6 @@ jobs:
         with:
           name: python-app
 
-      - name: Unzip artifact
-        run: unzip release.zip
-
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -67,3 +91,4 @@ jobs:
         with:
           app-name: 'agent-shield'
           slot-name: 'Production'
+          package: release.zip

@@ -1,18 +1,28 @@
 name: Agent Shield Production Pipeline
+
 on:
   push:
     branches: [ main, dev ]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'docs/**'
   pull_request:
     branches: [ main ]
 
 jobs:
   security-and-testing-gate:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Initialize Python Runtime Env
         uses: actions/setup-python@v5
@@ -20,11 +30,25 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        id: pip-cache
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: pip-
+
       - name: Install System Dependencies
+        if: steps.pip-cache.outputs.cache-hit != 'true'
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest bandit pip-audit
+
+      - name: Install audit tools only (cached run)
+        if: steps.pip-cache.outputs.cache-hit == 'true'
+        run: |
+          pip install pytest bandit pip-audit --quiet
 
       - name: Execute Pipeline Integrity Audits
         run: |
@@ -35,4 +59,4 @@ jobs:
         env:
           AGENT_SHIELD_API_KEY: ${{ secrets.AGENT_SHIELD_API_KEY }}
         run: |
-          python -m pytest tests/
+          python -m pytest tests/ -x --tb=short
