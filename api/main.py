@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import hmac
 import os
 import re
 import sys
@@ -47,11 +48,18 @@ def hash_key(key: str) -> str:
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
+def _matches_valid_api_key(api_key: str) -> bool:
+    if not VALID_API_KEY:
+        return False
+    return hmac.compare_digest(api_key, VALID_API_KEY) or hmac.compare_digest(
+        hash_key(api_key), VALID_API_KEY
+    )
+
 async def verify_api_key(api_key: str = Security(api_key_header)):
     if not api_key:
         logger.warning("Unauthorized — missing API key")
         raise HTTPException(status_code=401, detail="Unauthorized. Valid X-API-Key required.")
-    if VALID_API_KEY and hash_key(api_key) == VALID_API_KEY:
+    if _matches_valid_api_key(api_key):
         return api_key
     token_data = validate_token(api_key)
     if token_data:
@@ -117,7 +125,7 @@ def _is_internal_key(api_key: str) -> bool:
 def _is_pro_key(api_key: str) -> bool:
     if not api_key or _is_internal_key(api_key):
         return False
-    if VALID_API_KEY and hash_key(api_key) == VALID_API_KEY:
+    if _matches_valid_api_key(api_key):
         return True
     return api_key.startswith("as_tok_")
 
