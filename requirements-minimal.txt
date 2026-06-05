@@ -11,7 +11,7 @@ httpx>=0.24.0
 requests>=2.31.0
 
 # ML (smaller versions for compatibility)
-torch>=2.0.0,<2.2.0
+torch>=2.8.0,<2.9.0
 transformers>=4.30.0,<4.40.0
 onnxruntime>=1.15.0,<1.17.0
 
