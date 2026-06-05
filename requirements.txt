@@ -51,7 +51,7 @@ pyarrow==14.0.1
 # DATASETS
 # ============================================
 datasets==2.16.1
-huggingface-hub==0.20.1
+huggingface-hub>=0.30.0
 
 # ============================================
 # UI (Optional - can be installed separately)
