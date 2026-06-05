@@ -41,6 +41,15 @@ jobs:
           bandit -r . --exclude ./venv,./onnx_env,./tests -lll
           pip-audit -r requirements-no-ml.txt
 
+      - name: Download BERT Tokenizer
+        run: |
+          python -c "
+import os
+from transformers import DistilBertTokenizer
+os.makedirs('models/fine_tuned_bert', exist_ok=True)
+tokenizer = DistilBertTokenizer.from_pretrained('Sandeep120205/agent-shield-distilbert')
+tokenizer.save_pretrained('models/fine_tuned_bert')
+"
       - name: Run Unit Tests and Request Schema Audits
         env:
           AGENT_SHIELD_API_KEY: ${{ secrets.AGENT_SHIELD_API_KEY }}
