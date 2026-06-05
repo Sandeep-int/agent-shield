@@ -16,9 +16,19 @@ import threading
 import webbrowser
 from pathlib import Path
 
+try:
+    import keyring
+    KEYRING_AVAILABLE = True
+except ImportError:
+    KEYRING_AVAILABLE = False
+    print("[!] WARNING: keyring library not installed. Tokens will be stored in plain text.")
+    print("    Install: pip install keyring")
+
 API_BASE    = "https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net"
 API_KEY_ENV = "AGENT_SHIELD_API_KEY"
 TOKEN_FILE  = Path.home() / ".agent-shield" / "token"
+KEYRING_SERVICE = "agent-shield"
+KEYRING_USERNAME = "cli-token"
 
 # ── ANSI true-color ──────────────────────────────────────────────────────────
 _TOP    = (74,  144, 217)   # #4A90D9
@@ -73,10 +83,17 @@ def print_banner():
     out.write("\n")
     out.flush()
 
-# ── Token helpers ────────────────────────────────────────────────────────────
+# ── Token helpers with Keyring support ──────────────────────────────────────
 def load_token() -> str | None:
-    """Read token from ~/.agent-shield/token"""
+    """Read token from OS keyring (secure) or file (fallback)"""
     try:
+        # Try keyring first (most secure)
+        if KEYRING_AVAILABLE:
+            token = keyring.get_password(KEYRING_SERVICE, KEYRING_USERNAME)
+            if token:
+                return token
+        
+        # Fallback to file
         if TOKEN_FILE.exists():
             return TOKEN_FILE.read_text().strip()
     except Exception:
@@ -84,14 +101,33 @@ def load_token() -> str | None:
     return None
 
 def save_token(token: str):
-    """Save token to ~/.agent-shield/token"""
+    """Save token to OS keyring (secure) or file (fallback)"""
+    try:
+        # Try keyring first (most secure - encrypted by OS)
+        if KEYRING_AVAILABLE:
+            keyring.set_password(KEYRING_SERVICE, KEYRING_USERNAME, token)
+            print(f"  Token saved securely to OS keyring")
+            return
+    except Exception as e:
+        print(f"  [!] Keyring save failed: {e}")
+    
+    # Fallback to file
     TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
     TOKEN_FILE.write_text(token)
     TOKEN_FILE.chmod(0o600)  # owner read/write only
+    print(f"  [!] Token saved to file (less secure): {TOKEN_FILE}")
 
 def delete_token():
-    """Delete local token file"""
+    """Delete token from keyring and file"""
     try:
+        # Delete from keyring
+        if KEYRING_AVAILABLE:
+            try:
+                keyring.delete_password(KEYRING_SERVICE, KEYRING_USERNAME)
+            except keyring.errors.PasswordDeleteError:
+                pass
+        
+        # Delete from file
         TOKEN_FILE.unlink(missing_ok=True)
     except Exception:
         pass

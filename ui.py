@@ -1,8 +1,16 @@
 import gradio as gr
 import requests
 import datetime
+import os
+import hashlib
+from cryptography.fernet import Fernet
 
 API_URL = "https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net/v1/check"
+API_KEY = os.environ.get("AGENT_SHIELD_API_KEY", "")
+
+# Encryption key for logs (generate once and store securely)
+LOG_ENCRYPTION_KEY = os.environ.get("LOG_ENCRYPTION_KEY", Fernet.generate_key().decode())
+cipher_suite = Fernet(LOG_ENCRYPTION_KEY.encode())
 
 css = """
 body { background-color: #000000 !important; }
@@ -45,8 +53,16 @@ footer { display: none !important; }
 """
 
 def check_prompt(prompt):
+    if not API_KEY:
+        return "[ERROR] API_KEY not configured. Set AGENT_SHIELD_API_KEY environment variable."
+    
     try:
-        response = requests.post(API_URL, json={"prompt": prompt}, timeout=10)
+        response = requests.post(
+            API_URL,
+            json={"prompt": prompt},
+            headers={"X-API-Key": API_KEY},
+            timeout=10
+        )
         result = response.json()
         
         # Format the output for the UI
@@ -62,9 +78,11 @@ def check_prompt(prompt):
                    f"--- RAW METADATA ---\n"
                    f"{result.get('details', 'No details available')}")
         
-        # LOGGING: Append every test to a local file for your portfolio
-        with open("security_audit.log", "a") as f:
-            f.write(f"[{datetime.datetime.now()}] Input: {prompt} | Verdict: {verdict} | Layer: {layer}\n")
+        # ENCRYPTED LOGGING: Append encrypted logs
+        log_entry = f"[{datetime.datetime.now()}] Input: {prompt} | Verdict: {verdict} | Layer: {layer}\n"
+        encrypted_log = cipher_suite.encrypt(log_entry.encode())
+        with open("security_audit.log", "ab") as f:
+            f.write(encrypted_log + b"\n")
             
         return display
     except Exception as e:
