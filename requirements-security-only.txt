@@ -17,7 +17,7 @@ azure-storage-blob==12.19.0
 azure-data-tables==12.4.4
 
 # Security (CRITICAL - needed for all fixes)
-cryptography==41.0.7
+cryptography==46.0.7
 keyring==24.3.0
 
 # Utils

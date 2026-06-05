@@ -14,7 +14,7 @@ starlette==0.40.0
 # ============================================
 # SECURITY (CRITICAL - Required for all 10 fixes)
 # ============================================
-cryptography==41.0.7
+cryptography==46.0.7
 keyring==24.3.0
 python-dotenv==1.0.0
 
