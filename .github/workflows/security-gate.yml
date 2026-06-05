@@ -37,9 +37,9 @@ jobs:
         run: |
           python - <<'PYEOF'
           import os
-          from transformers import DistilBertTokenizer
+          from transformers import AutoTokenizer
           os.makedirs('models/fine_tuned_bert', exist_ok=True)
-          tokenizer = DistilBertTokenizer.from_pretrained('Sandeep120205/agent-shield-distilbert')
+          tokenizer = AutoTokenizer.from_pretrained('Sandeep120205/agent-shield-distilbert')
           tokenizer.save_pretrained('models/fine_tuned_bert')
           PYEOF
       - name: Run Unit Tests and Request Schema Audits
