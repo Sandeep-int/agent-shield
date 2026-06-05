@@ -1,5 +1,4 @@
 name: Agent Shield Production Pipeline
-
 on:
   push:
     branches: [ main, dev ]
@@ -10,46 +9,39 @@ on:
       - 'docs/**'
   pull_request:
     branches: [ main ]
-
 jobs:
   security-and-testing-gate:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
-
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
       - name: Initialize Python Runtime Env
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest bandit pip-audit
-
       - name: Execute Pipeline Integrity Audits
         run: |
           bandit -r . --exclude ./venv,./onnx_env,./tests -lll
           pip-audit -r requirements-no-ml.txt
-
       - name: Download BERT Tokenizer
         run: |
-          python -c "
-import os
-from transformers import DistilBertTokenizer
-os.makedirs('models/fine_tuned_bert', exist_ok=True)
-tokenizer = DistilBertTokenizer.from_pretrained('Sandeep120205/agent-shield-distilbert')
-tokenizer.save_pretrained('models/fine_tuned_bert')
-"
+          python - <<'PYEOF'
+          import os
+          from transformers import DistilBertTokenizer
+          os.makedirs('models/fine_tuned_bert', exist_ok=True)
+          tokenizer = DistilBertTokenizer.from_pretrained('Sandeep120205/agent-shield-distilbert')
+          tokenizer.save_pretrained('models/fine_tuned_bert')
+          PYEOF
       - name: Run Unit Tests and Request Schema Audits
         env:
           AGENT_SHIELD_API_KEY: ${{ secrets.AGENT_SHIELD_API_KEY }}
