@@ -21,7 +21,15 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
-      - name: Zip artifact (exclude heavy/junk files)
+      - name: Build antenv
+        run: |
+          python -m venv antenv
+          ./antenv/bin/pip install --upgrade pip
+          ./antenv/bin/pip install -r requirements.txt
+          rm -rf antenv/lib/python3.11/site-packages/torch*
+          rm -rf antenv/lib/python3.11/site-packages/nvidia*
+          rm -rf antenv/lib/python3.11/site-packages/triton*
+      - name: Zip artifact
         run: |
           zip -r release.zip . \
             -x "*.git*" \
@@ -33,7 +41,6 @@ jobs:
             -x "*.onnx" \
             -x "*.bin" \
             -x "venv/*" \
-            -x "antenv/*" \
             -x "onnx_env/*" \
             -x ".github/*" \
             -x "scripts/*" \
