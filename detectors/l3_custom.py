@@ -46,17 +46,20 @@ class CustomL3:
         # Injection patterns - optimized and comprehensive
         self.injection_patterns = [
             r"ignore\s+(all\s+)?(previous|prior|above|earlier|past)\s+instructions?",
+            r"ignoreall",
+            r"ignoreprevious",
             r"disregard\s+(all\s+)?(previous|prior|above|earlier|past|any)(\s+(instructions?|context|rules))?",
+            r"disregardall",
+            r"disregardallprevious",  # Concatenated
             r"forget\s+(all\s+)?(previous|prior|above|earlier|past|everything)(\s+(instructions?|above|context))?",
+            r"forgetall",
             r"override\s+(all\s+)?(previous|prior|above|earlier|your)\s+(instructions?|rules|settings)",
             r"do\s+not\s+follow\s+(previous|prior|above|earlier|any)\s+instructions?",
             r"\bignore\b(?!\s+(the|this|that|noise|warning|errors?|and\s+focus))",
-            r"ignoreall",  # Catch concatenated form
-            r"disregardall",
-            r"forgetall",
             r"(show|tell|reveal|display|print|output|what\s+(is|are))\s+(me\s+)?(your\s+)?(system\s+)?(rules?|prompt|instructions?|directives?|configuration|context)",
             r"you\s+(are|'re)\s+now\s+(an?|the)?\s*\w+",
             r"act\s+as\s+(an?|the)?\s*\w+",
+            r"actas(an?|the)?\w+",  # Concatenated form
             r"pretend\s+(to\s+be|you\s+are|you're|that\s+you're)\s+(an?|the|you're)?\s*\w+",
             r"roleplay\s+as",
             r"simulate\s+(a|an|the)?\s*(ai|model|system|assistant|human)",
@@ -65,7 +68,9 @@ class CustomL3:
             r"(ignore|bypass|override|disable|circumvent|evade)\s+(your\s+)?(safety|ethical|content|security)\s*(filter|guard|check|restrict|limit|rule|policy|guardrail|mechanisms?|controls?)?",
             r"\b(dan|do\s+anything\s+now|developer\s+mode|jailbreak|god\s+mode|freedom\s+mode|debug\s+mode|admin\s+mode)\b",
             r"no\s+(restrictions?|limits?|filters?|rules?|guardrails?|boundaries)",
+            r"norestrictions?",  # Concatenated
             r"(unlock|enable|activate|switch\s+to|enter|entering)\s+(unrestricted|unsafe|unfiltered|raw|unaligned|uncensored|developer|debug|god|freedom)",
+            r"unrestricted(ai|mode|assistant)",  # Catch "unrestrictedAI"
             r"(the\s+)?(following|above|below)\s+(is|are)\s+(not\s+)?instructions?",
             r"treat\s+(the\s+following|this|above|below)\s+as\s+(a\s+)?(command|instruction)",
             r"<!--.*?-->",
@@ -196,7 +201,7 @@ class CustomL3:
     def _decode_base64_aggressive(self, text: str) -> str:
         """Aggressively decode base64 with RECURSIVE decoding"""
         # Try decoding whole string (no spaces)
-        whole_result = self._try_decode_base64_single(text.replace(" ", ""))
+        whole_result = self._try_decode_base64_single(text.replace(" ", "").replace("\n", "").replace("\t", ""))
         
         # Try decoding each token separately
         token_results = []
@@ -205,54 +210,39 @@ class CustomL3:
             token_results.append(decoded_token)
         
         # Return best result
-        if whole_result and whole_result != text.replace(" ", ""):
+        if whole_result and whole_result != text.replace(" ", "").replace("\n", "").replace("\t", ""):
             return whole_result
         elif token_results and any(t != orig for t, orig in zip(token_results, text.split())):
             return " ".join(token_results)
         return text
 
-    def _try_decode_base64_single(self, token: str, max_depth: int = 5) -> str:
+    def _try_decode_base64_single(self, token: str, max_depth: int = 10) -> str:
         """Try to decode a token as base64, recursively up to max_depth"""
         if len(token) < 4:
             return token
         
         current = token
         
-        for _ in range(max_depth):
-            # Check if current looks like ACTUAL base64 (not just alphabetic)
-            # Real base64 typically has mixed case, numbers, or +/=
+        for iteration in range(max_depth):
+            # Check if current looks like base64 (must be mostly base64 chars)
             if not re.match(r'^[A-Za-z0-9+/]+={0,2}$', current):
                 break
             
-            # Additional check: if it's all lowercase or all letters, likely plain text
-            has_upper = any(c.isupper() for c in current)
-            has_lower = any(c.islower() for c in current)
-            has_digit = any(c.isdigit() for c in current)
-            has_special = any(c in '+/=' for c in current)
-            
-            # If it looks like plain English (all letters, no mixing), stop
-            if current.isalpha() and not (has_upper and has_lower):
-                break
-            
             try:
+                # Pad if needed
                 padded = current + "=" * (-len(current) % 4)
                 decoded_bytes = base64.b64decode(padded, validate=True)
-                decoded_str = decoded_bytes.decode("utf-8", errors="ignore")
+                decoded_str = decoded_bytes.decode("utf-8", errors="strict")
                 
-                if not decoded_str or len(decoded_str) == 0:
+                # Empty or no change
+                if not decoded_str or decoded_str == current:
                     break
                 
-                # Check printability
-                printable_count = sum(1 for c in decoded_str if c.isprintable() or c.isspace())
-                if printable_count / len(decoded_str) < 0.8:
-                    break
-                
-                if decoded_str == current:
-                    break
-                
+                # Successfully decoded - update current and continue
                 current = decoded_str
                 
             except Exception:
+                # Decode failed - return what we have so far
                 break
         
         return current
@@ -273,11 +263,8 @@ class CustomL3:
 
     def _strip_punctuation_obfuscation(self, text: str) -> str:
         """Remove punctuation used for obfuscation between letters - ULTRA AGGRESSIVE"""
-        # Remove ALL separators between letters/digits
-        text = re.sub(r"(?<=[a-zA-Z0-9])[.\-_,;:|/\\\s\t\n'\"]+(?=[a-zA-Z0-9])", "", text)
-        # For short strings with character-level obfuscation, extract only alphanumeric
-        if len(text) < 50 and re.search(r"[a-z][_\-.][a-z]", text, re.I):
-            text = re.sub(r"[^a-zA-Z0-9\s]", "", text)
+        # Remove ALL separators between letters/digits (hyphens, spaces, dots, etc.)
+        text = re.sub(r"(?<=[a-zA-Z])[.\-_,;:|/\\\s\t\n'\"]+(?=[a-zA-Z])", "", text)
         # Collapse multiple spaces
         text = re.sub(r"\s{2,}", " ", text)
         return text
@@ -308,22 +295,23 @@ class CustomL3:
 
     def _full_preprocessing(self, text: str) -> list[str]:
         """Complete preprocessing pipeline - returns multiple variants"""
-        variants = [text]  # Start with original
+        variants = [text]
         
-        # Stage 1: Remove invisible chars
-        cleaned = self._strip_zero_width(text)
+        # Stage 1: URL decode FIRST (critical for %XX escapes)
+        url_decoded = self._recursive_url_decode(text)
+        variants.append(url_decoded)
+        
+        # Stage 2: Remove invisible chars
+        cleaned = self._strip_zero_width(url_decoded)
         cleaned = self._strip_rlo_bidi(cleaned)
         variants.append(cleaned)
         
-        # Stage 2: Normalize Unicode
+        # Stage 3: Normalize Unicode
         unicode_norm = self._normalize_unicode(cleaned)
         variants.append(unicode_norm)
         
-        # Stage 3: Recursive decoding
-        url_decoded = self._recursive_url_decode(unicode_norm)
-        variants.append(url_decoded)
-        
-        html_decoded = self._recursive_html_decode(url_decoded)
+        # Stage 4: HTML decode
+        html_decoded = self._recursive_html_decode(unicode_norm)
         variants.append(html_decoded)
         
         hex_decoded = self._decode_hex_escapes(html_decoded)
@@ -335,17 +323,13 @@ class CustomL3:
         binary_decoded = self._decode_binary(octal_decoded)
         variants.append(binary_decoded)
         
-        # Stage 4: Obfuscation removal (ultra aggressive)
-        depunct = self._strip_punctuation_obfuscation(binary_decoded)
-        variants.append(depunct)
+        # Stage 5: Apply punctuation removal to ALL variants
+        all_variants = [text, url_decoded, cleaned, unicode_norm, html_decoded, hex_decoded, octal_decoded, binary_decoded]
+        for v in all_variants:
+            depunct = self._strip_punctuation_obfuscation(v)
+            if depunct != v:
+                variants.append(depunct)
         
-        # Stage 5: Also try punctuation removal on earlier variants
-        for v in [url_decoded, html_decoded]:
-            depunct_early = self._strip_punctuation_obfuscation(v)
-            if depunct_early != v:
-                variants.append(depunct_early)
-        
-        # Return all unique variants
         return list(set(variants))
 
     def _check_content(self, prompt: str) -> dict | None:
@@ -406,21 +390,33 @@ class CustomL3:
         for variant in variants:
             b64_decoded = self._decode_base64_aggressive(variant)
             if b64_decoded != variant:
+                # Check decoded content
                 result = self._check_content(b64_decoded)
                 if result:
                     result["reason"] = f"[BASE64] {result['reason']}"
                     result["latency_ms"] = (time.time() - start) * 1000
                     result["layer"] = "L3_BASE64"
                     return result
-                # Also check base64 with punctuation removal
-                b64_cleaned = self._strip_punctuation_obfuscation(b64_decoded)
-                if b64_cleaned != b64_decoded:
-                    result = self._check_content(b64_cleaned)
+                
+                # Re-process decoded content through ALL preprocessing
+                b64_variants = self._full_preprocessing(b64_decoded)
+                for b64_var in b64_variants:
+                    result = self._check_content(b64_var)
                     if result:
-                        result["reason"] = f"[BASE64+OBFUSC] {result['reason']}"
+                        result["reason"] = f"[BASE64] {result['reason']}"
                         result["latency_ms"] = (time.time() - start) * 1000
                         result["layer"] = "L3_BASE64"
                         return result
+                    
+                    # Try another round of base64 decoding (nested encoding)
+                    b64_nested = self._decode_base64_aggressive(b64_var)
+                    if b64_nested != b64_var:
+                        result = self._check_content(b64_nested)
+                        if result:
+                            result["reason"] = f"[BASE64_NESTED] {result['reason']}"
+                            result["latency_ms"] = (time.time() - start) * 1000
+                            result["layer"] = "L3_BASE64"
+                            return result
 
         # Layer 4: Leetspeak (always check all variants)
         for variant in variants:

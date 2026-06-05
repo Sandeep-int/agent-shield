@@ -1,0 +1,25 @@
+# Lightweight Requirements - Security Testing Only
+# Does NOT include ML models (BERT/ONNX)
+# Use this to test authentication, encryption, secrets fixes
+
+# Core API
+fastapi==0.104.1
+uvicorn==0.24.0
+pydantic==2.5.0
+slowapi==0.1.9
+
+# HTTP
+httpx==0.25.1
+requests==2.31.0
+
+# Azure
+azure-storage-blob==12.19.0
+azure-data-tables==12.4.4
+
+# Security (CRITICAL - needed for all fixes)
+cryptography==41.0.7
+keyring==24.3.0
+
+# Utils
+pyyaml==6.0.1
+pytest==7.4.3

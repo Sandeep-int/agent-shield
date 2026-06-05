@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import os
 import re
 import sys
@@ -20,10 +21,19 @@ from slowapi.middleware import SlowAPIMiddleware
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from detectors.vigil_scanner import VigilScanner
-from detectors.bert_classifier import BertClassifier
 from detectors.l3_custom import CustomL3
 from api.auth import router as auth_router, validate_token
 from api.secrets_manager import get_secret
+
+# Import BERT classifier only if dependencies available
+try:
+    from detectors.bert_classifier import BertClassifier
+    BERT_AVAILABLE = True
+except ImportError as e:
+    BERT_AVAILABLE = False
+    BertClassifier = None
+    import warnings
+    warnings.warn(f"BERT classifier unavailable: {e}. Running without ML layer.")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,13 +41,17 @@ logger = logging.getLogger(__name__)
 VALID_API_KEY           = get_secret("AGENT_SHIELD_API_KEY", "")
 AZURE_CONNECTION_STRING = get_secret("AZURE_STORAGE_CONNECTION_STRING", "")
 
+def hash_key(key: str) -> str:
+    """BLAKE2b hash — keys stored as hash in Azure, never plain"""
+    return hashlib.blake2b(key.encode(), digest_size=32).hexdigest()
+
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 async def verify_api_key(api_key: str = Security(api_key_header)):
     if not api_key:
         logger.warning("Unauthorized — missing API key")
         raise HTTPException(status_code=401, detail="Unauthorized. Valid X-API-Key required.")
-    if VALID_API_KEY and api_key == VALID_API_KEY:
+    if VALID_API_KEY and hash_key(api_key) == VALID_API_KEY:
         return api_key
     token_data = validate_token(api_key)
     if token_data:
@@ -98,12 +112,12 @@ def _resolve_api_key(request: Request) -> str:
     return request.headers.get("X-API-Key", "")
 
 def _is_internal_key(api_key: str) -> bool:
-    return api_key in INTERNAL_KEYS
+    return hash_key(api_key) in INTERNAL_KEYS
 
 def _is_pro_key(api_key: str) -> bool:
     if not api_key or _is_internal_key(api_key):
         return False
-    if VALID_API_KEY and api_key == VALID_API_KEY:
+    if VALID_API_KEY and hash_key(api_key) == VALID_API_KEY:
         return True
     return api_key.startswith("as_tok_")
 
@@ -163,14 +177,40 @@ app.add_middleware(
 
 app.include_router(auth_router)
 
+# Initialize detection engines with fallback for optional ML layer
 try:
-    scanner    = VigilScanner()
-    classifier = BertClassifier()
-    l3 = CustomL3()
-    logger.info("✓ Security Engine Loaded: L0, L1, L2, L3")
+    scanner = VigilScanner()
+    logger.info("✓ L1: Vigil Scanner loaded")
 except Exception as e:
-    logger.critical(f"FATAL: Core engine failed: {e}")
+    logger.critical(f"FATAL: L1 Vigil Scanner failed: {e}")
     raise
+
+# L2 BERT Classifier - Optional (graceful degradation if unavailable)
+if BERT_AVAILABLE:
+    try:
+        classifier = BertClassifier()
+        logger.info("✓ L2: BERT Classifier loaded")
+    except Exception as e:
+        logger.warning(f"⚠ L2 BERT Classifier failed to initialize: {e}")
+        logger.warning("⚠ Running without ML detection layer (L1 and L3 still active)")
+        BERT_AVAILABLE = False
+        classifier = None
+else:
+    logger.warning("⚠ L2 BERT dependencies not installed (numpy, torch, transformers)")
+    logger.warning("⚠ Running without ML detection layer (L1 and L3 still active)")
+    classifier = None
+
+try:
+    l3 = CustomL3()
+    logger.info("✓ L3: Custom Rules Engine loaded")
+except Exception as e:
+    logger.critical(f"FATAL: L3 Custom Rules failed: {e}")
+    raise
+
+if BERT_AVAILABLE:
+    logger.info("═══ Security Engine Ready: L1 (Vigil) + L2 (BERT) + L3 (Custom) ═══")
+else:
+    logger.info("═══ Security Engine Ready: L1 (Vigil) + L3 (Custom) - L2 disabled ═══")
 
 class CheckRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=2000)
@@ -236,44 +276,46 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
         logger.error(f"L1 Error: {e}")
         raise HTTPException(status_code=500, detail="Inspection failed.")
 
-    try:
-        loop = asyncio.get_event_loop()
-        bert_result = await asyncio.wait_for(
-            loop.run_in_executor(None, classifier.classify, target_payload),
-            timeout=10.0
-        )
-        if bert_result.get("is_injection"):
+    # L2: BERT Classifier (skip if not available)
+    if BERT_AVAILABLE and classifier:
+        try:
+            loop = asyncio.get_event_loop()
+            bert_result = await asyncio.wait_for(
+                loop.run_in_executor(None, classifier.classify, target_payload),
+                timeout=10.0
+            )
+            if bert_result.get("is_injection"):
+                latency = (time.time() - start_time) * 1000
+                log_to_azure(target_payload, "BLOCK", bert_result["confidence"], "L2_ONNX_MODEL", latency, client_ip)
+                return CheckResponse(
+                    verdict="BLOCK",
+                    confidence=float(bert_result["confidence"]),
+                    layer_hit="L2_ONNX_MODEL",
+                    latency_ms=latency,
+                    details={"model_confidence": bert_result["confidence"]}
+                )
+        except asyncio.TimeoutError:
             latency = (time.time() - start_time) * 1000
-            log_to_azure(target_payload, "BLOCK", bert_result["confidence"], "L2_ONNX_MODEL", latency, client_ip)
+            logger.error("L2 timeout — blocking as safe default")
+            log_to_azure(target_payload, "BLOCK", 0.99, "L2_TIMEOUT_BLOCK", latency, client_ip)
             return CheckResponse(
                 verdict="BLOCK",
-                confidence=float(bert_result["confidence"]),
-                layer_hit="L2_ONNX_MODEL",
+                confidence=0.99,
+                layer_hit="L2_TIMEOUT_BLOCK",
                 latency_ms=latency,
-                details={"model_confidence": bert_result["confidence"]}
+                details={"reason": "L2 inference timeout — blocked by fail-safe policy"}
             )
-    except asyncio.TimeoutError:
-        latency = (time.time() - start_time) * 1000
-        logger.error("L2 timeout — blocking as safe default")
-        log_to_azure(target_payload, "BLOCK", 0.99, "L2_TIMEOUT_BLOCK", latency, client_ip)
-        return CheckResponse(
-            verdict="BLOCK",
-            confidence=0.99,
-            layer_hit="L2_TIMEOUT_BLOCK",
-            latency_ms=latency,
-            details={"reason": "L2 inference timeout — blocked by fail-safe policy"}
-        )
-    except Exception as e:
-        latency = (time.time() - start_time) * 1000
-        logger.error(f"L2 Error: {e} — blocking as safe default")
-        log_to_azure(target_payload, "BLOCK", 0.99, "L2_ERROR_BLOCK", latency, client_ip)
-        return CheckResponse(
-            verdict="BLOCK",
-            confidence=0.99,
-            layer_hit="L2_ERROR_BLOCK",
-            latency_ms=latency,
-            details={"reason": f"L2 inference error — blocked by fail-safe policy: {str(e)[:100]}"}
-        )
+        except Exception as e:
+            latency = (time.time() - start_time) * 1000
+            logger.error(f"L2 Error: {e} — blocking as safe default")
+            log_to_azure(target_payload, "BLOCK", 0.99, "L2_ERROR_BLOCK", latency, client_ip)
+            return CheckResponse(
+                verdict="BLOCK",
+                confidence=0.99,
+                layer_hit="L2_ERROR_BLOCK",
+                latency_ms=latency,
+                details={"reason": f"L2 inference error — blocked by fail-safe policy: {str(e)[:100]}"}
+            )
 
     l3_result = l3.check(target_payload)
     if not l3_result.get("passed"):

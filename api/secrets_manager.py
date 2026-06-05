@@ -4,8 +4,19 @@ Supports Azure Key Vault, AWS Secrets Manager, and fallback to environment varia
 """
 import os
 import logging
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+# Auto-load .env file if it exists
+try:
+    from dotenv import load_dotenv
+    env_path = Path(__file__).parent.parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+        logger.info(f"Loaded .env from {env_path}")
+except ImportError:
+    pass
 
 # Secret storage backend configuration
 SECRET_BACKEND = os.environ.get("SECRET_BACKEND", "env").lower()  # "azure", "aws", or "env"

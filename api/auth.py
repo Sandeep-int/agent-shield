@@ -10,6 +10,7 @@ import secrets
 import time
 import logging
 import httpx
+import hashlib
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Request, HTTPException, Cookie
 from fastapi.responses import JSONResponse, RedirectResponse, Response
@@ -44,18 +45,23 @@ def generate_token() -> str:
     return f"as_tok_{secrets.token_urlsafe(32)}"
 
 
+def hash_token(token: str) -> str:
+    """BLAKE2b hash of token — stored in Azure, never plain text"""
+    return hashlib.blake2b(token.encode(), digest_size=32).hexdigest()
+
 def save_token(github_id: str, username: str, email: str, token: str):
     """Save token to Azure Table Storage"""
     try:
         table = get_table_client()
         expiry = datetime.now(timezone.utc) + timedelta(days=TOKEN_EXPIRY_DAYS)
+        token_hash = hash_token(token)
         entity = {
             "PartitionKey": "tokens",
-            "RowKey": token,
+            "RowKey": token_hash,
             "github_id": str(github_id),
             "username": username,
             "email": email or "",
-            "token": token,
+            "token_hash": token_hash,
             "status": "active",
             "calls_total": 0,
             "calls_today": 0,
@@ -77,7 +83,8 @@ def validate_token(token: str) -> dict | None:
     """
     try:
         table = get_table_client()
-        entity = table.get_entity(partition_key="tokens", row_key=token)
+        token_hash = hash_token(token)
+        entity = table.get_entity(partition_key="tokens", row_key=token_hash)
 
         # check status
         if entity.get("status") != "active":
@@ -243,7 +250,8 @@ async def auth_revoke(request: Request):
 
     try:
         table = get_table_client()
-        entity = table.get_entity(partition_key="tokens", row_key=token)
+        token_hash = hash_token(token)
+        entity = table.get_entity(partition_key="tokens", row_key=token_hash)
         entity["status"] = "revoked"
         table.upsert_entity(entity)
         logger.info(f"Token revoked: {entity.get('username', 'unknown')}")
