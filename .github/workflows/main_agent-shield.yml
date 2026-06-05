@@ -1,5 +1,4 @@
 name: Build and deploy Python app to Azure Web App - agent-shield
-
 on:
   push:
     branches:
@@ -10,27 +9,18 @@ on:
       - '.gitignore'
       - 'docs/**'
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python version
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
-
-      - name: Install dependencies (uses pip cache)
-        run: |
-          python -m venv antenv
-          ./antenv/bin/pip install -r requirements.txt
-
       - name: Zip artifact (exclude heavy/junk files)
         run: |
           zip -r release.zip . \
@@ -43,39 +33,34 @@ jobs:
             -x "*.onnx" \
             -x "*.bin" \
             -x "venv/*" \
-            -x "antenv/lib/python3.11/site-packages/torch*" \
+            -x "antenv/*" \
             -x "onnx_env/*" \
             -x ".github/*" \
             -x "scripts/*" \
             -x "*.egg-info/*"
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: python-app
           path: release.zip
           retention-days: 1
-
   deploy:
     runs-on: ubuntu-latest
     needs: build
     permissions:
       id-token: write
       contents: read
-
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: python-app
-
       - name: Login to Azure
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_6BD2F47C47F24AE39BBA766F19CA4E6E }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_3D0FD016B68A43B3B6309F8C9907AEDA }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_9CF28BE495E74C41BA76D95F880F2A4A }}
-
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
