@@ -27,7 +27,9 @@ jobs:
           cache: 'pip'
 
       - name: Install dependencies (uses pip cache)
-        run: pip install -r requirements.txt
+        run: |
+          python -m venv antenv
+          ./antenv/bin/pip install -r requirements.txt
 
       - name: Zip artifact (exclude heavy/junk files)
         run: |
@@ -41,6 +43,7 @@ jobs:
             -x "*.onnx" \
             -x "*.bin" \
             -x "venv/*" \
+            -x "antenv/lib/python3.11/site-packages/torch*" \
             -x "onnx_env/*" \
             -x ".github/*" \
             -x "scripts/*" \
