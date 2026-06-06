@@ -352,7 +352,7 @@ async def health():
     return {"status": "ok"}
 
 @app.get("/metrics")
-async def metrics(api_key: str = Security(verify_api_key)):
+async def metrics():  
     try:
         from azure.data.tables import TableServiceClient
         service = TableServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
