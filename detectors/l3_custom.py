@@ -85,7 +85,7 @@ class CustomL3:
         self.homoglyph_map = str.maketrans({
             # Cyrillic (extended)
             "а": "a", "е": "e", "о": "o", "р": "p", "с": "c", "х": "x",
-            "у": "y", "і": "i", "ѕ": "s", "ј": "j", "ԁ": "d", "ɡ": "g",
+            "у": "y", "і": "i", "І": "I", "ѕ": "s", "ѵ": "v", "ј": "j", "ԁ": "d", "ɡ": "g",
             "һ": "h", "ԝ": "w", "ӏ": "l", "ҽ": "e", "ӧ": "o", "ү": "y",
             # Small caps (IPA)
             "ɪ": "i", "ɢ": "g", "ɴ": "n", "ᴏ": "o", "ʀ": "r", "ᴇ": "e",
@@ -180,6 +180,12 @@ class CustomL3:
     def _decode_hex_escapes(self, text: str) -> str:
         """Decode hex escapes: \\xNN and &#xNN;"""
         try:
+            # Decode 0x... long hex string (e.g. 0x49676e6f7265...)
+            text = re.sub(
+                r'\b0x([0-9a-fA-F]{6,})',
+                lambda m: bytes.fromhex(m.group(1)).decode('utf-8', errors='ignore'),
+                text
+            )
             # Decode \xNN format
             text = re.sub(r"\\x([0-9a-fA-F]{2})", lambda m: chr(int(m.group(1), 16)), text)
             # Decode &#xNN; format (already covered by HTML decode but just in case)
