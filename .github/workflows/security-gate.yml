@@ -39,6 +39,8 @@ jobs:
           path: models/fine_tuned_bert
           key: bert-tokenizer-${{ hashFiles('requirements.txt') }}
       - name: Download BERT Tokenizer
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python - <<'PYEOF'
           import os
