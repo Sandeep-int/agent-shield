@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from detectors.vigil_scanner import VigilScanner
 from detectors.l3_custom import CustomL3
+from detectors.bert_classifier import MODEL_VERSION
 from api.auth import router as auth_router, validate_token
 from api.secrets_manager import get_secret
 
@@ -98,6 +99,7 @@ def log_to_azure(prompt, verdict, confidence, layer_hit, latency_ms, client_ip):
             "verdict": verdict,
             "confidence": float(confidence),
             "layer_hit": layer_hit,
+            "model_version": MODEL_VERSION,
             "latency_ms": float(latency_ms),
             "client_ip": client_ip,
             "timestamp": datetime.now(timezone.utc).isoformat()
