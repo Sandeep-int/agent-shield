@@ -6,6 +6,7 @@ from onnxruntime import InferenceSession
 
 HF_MODEL = "Sandeep120205/agent-shield-distilbert"
 HF_REVISION = "main"  # nosec B615 - private model, no public SHA
+MODEL_VERSION = os.environ.get("MODEL_VERSION", "distilbert-v1")
 MODEL_DIR = "/home/models"
 ONNX_PATH = os.path.join(MODEL_DIR, "model.onnx")
 ONNX_DATA_PATH = os.path.join(MODEL_DIR, "model.onnx.data")
@@ -34,7 +35,7 @@ class BertClassifier:
                 download_file(BLOB_ONNX_DATA, ONNX_DATA_PATH)
             LOCAL_TOKENIZER_PATH = os.path.join(MODEL_DIR, "tokenizer")
             if os.path.isdir(LOCAL_TOKENIZER_PATH):
-                self.tokenizer = DistilBertTokenizer.from_pretrained(
+                self.tokenizer = DistilBertTokenizer.from_pretrained(  # nosec B615
                     LOCAL_TOKENIZER_PATH,
                     local_files_only=True
                 )

@@ -98,6 +98,7 @@ def log_to_azure(prompt, verdict, confidence, layer_hit, latency_ms, client_ip):
             "verdict": verdict,
             "confidence": float(confidence),
             "layer_hit": layer_hit,
+            "model_version": os.environ.get("MODEL_VERSION", "distilbert-v1"),
             "latency_ms": float(latency_ms),
             "client_ip": client_ip,
             "timestamp": datetime.now(timezone.utc).isoformat()
