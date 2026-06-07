@@ -18,9 +18,10 @@ jobs:
       contents: read
     steps:
       - name: Checkout Code Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af68  # v4
         with:
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Initialize Python Runtime Env
         uses: actions/setup-python@v5
@@ -76,7 +77,9 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af68  # v4
+        with:
+          persist-credentials: false
       - name: Set up Python version
         uses: actions/setup-python@v5
         with:
