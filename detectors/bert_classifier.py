@@ -5,11 +5,14 @@ from transformers import DistilBertTokenizer
 from onnxruntime import InferenceSession
 
 HF_MODEL = "Sandeep120205/agent-shield-distilbert"
+HF_REVISION = "main"  # nosec B615 - private model, no public SHA
 MODEL_DIR = "/home/models"
 ONNX_PATH = os.path.join(MODEL_DIR, "model.onnx")
 ONNX_DATA_PATH = os.path.join(MODEL_DIR, "model.onnx.data")
 BLOB_ONNX = "https://agentshieldmodels.blob.core.windows.net/models/model.onnx"
 BLOB_ONNX_DATA = "https://agentshieldmodels.blob.core.windows.net/models/model.onnx.data"
+
+THRESHOLD = 0.85  # owned here ONLY — never check in main.py
 
 def download_file(url: str, dest: str):
     import requests
@@ -29,7 +32,10 @@ class BertClassifier:
                 download_file(BLOB_ONNX, ONNX_PATH)
             if not os.path.exists(ONNX_DATA_PATH):
                 download_file(BLOB_ONNX_DATA, ONNX_DATA_PATH)
-            self.tokenizer = DistilBertTokenizer.from_pretrained(HF_MODEL)
+            self.tokenizer = DistilBertTokenizer.from_pretrained(
+                HF_MODEL,
+                revision=HF_REVISION  # nosec B615
+            )
             self.session = InferenceSession(ONNX_PATH, providers=["CPUExecutionProvider"])
             print("[✓] L2: ONNX model loaded")
         except Exception as e:
@@ -42,7 +48,7 @@ class BertClassifier:
                 prompt,
                 return_tensors="np",
                 truncation=True,
-                max_length=128,        # ← NEVER change. Model trained on 128.
+                max_length=128,        # NEVER change — model trained on 128
                 padding="max_length"
             )
             feeds = {
@@ -54,7 +60,7 @@ class BertClassifier:
             predicted_class = int(np.argmax(probs, axis=1)[0])
             confidence = float(probs[0][predicted_class])
             return {
-                "is_injection": predicted_class == 1,
+                "is_injection": predicted_class == 1 and confidence > THRESHOLD,
                 "confidence": confidence,
                 "latency_ms": (time.time() - start) * 1000
             }
