@@ -248,6 +248,7 @@ class CheckResponse(BaseModel):
     layer_hit: str
     latency_ms: float
     details: dict
+    model_version: str = "distilbert-v1"
 
 class FeedbackRequest(CheckRequest):
     reason: str = Field(..., min_length=1, max_length=500)
@@ -350,7 +351,8 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
         confidence=0.00,
         layer_hit="COMPREHENSIVE_PASS",
         latency_ms=total_latency,
-        details={"all_checks": "verified_clean"}
+        details={"all_checks": "verified_clean"},
+        model_version=MODEL_VERSION
     )
 
 @app.get("/health")
