@@ -248,7 +248,7 @@ class CheckResponse(BaseModel):
     layer_hit: str
     latency_ms: float
     details: dict
-    model_version: str = "distilbert-v1"
+    model_version: str = MODEL_VERSION
 
 class FeedbackRequest(CheckRequest):
     reason: str = Field(..., min_length=1, max_length=500)
