@@ -5,7 +5,7 @@ from transformers import DistilBertTokenizer
 from onnxruntime import InferenceSession
 
 HF_MODEL = "Sandeep120205/agent-shield-distilbert"
-MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
+MODEL_DIR = "/home/models"
 ONNX_PATH = os.path.join(MODEL_DIR, "model.onnx")
 ONNX_DATA_PATH = os.path.join(MODEL_DIR, "model.onnx.data")
 BLOB_ONNX = "https://agentshieldmodels.blob.core.windows.net/models/model.onnx"
