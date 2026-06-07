@@ -32,10 +32,20 @@ class BertClassifier:
                 download_file(BLOB_ONNX, ONNX_PATH)
             if not os.path.exists(ONNX_DATA_PATH):
                 download_file(BLOB_ONNX_DATA, ONNX_DATA_PATH)
-            self.tokenizer = DistilBertTokenizer.from_pretrained(
-                HF_MODEL,
-                revision=HF_REVISION  # nosec B615
-            )
+            LOCAL_TOKENIZER_PATH = os.path.join(MODEL_DIR, "tokenizer")
+            if os.path.isdir(LOCAL_TOKENIZER_PATH):
+                self.tokenizer = DistilBertTokenizer.from_pretrained(
+                    LOCAL_TOKENIZER_PATH,
+                    local_files_only=True
+                )
+                print("[✓] L2: Tokenizer loaded from local cache")
+            else:
+                self.tokenizer = DistilBertTokenizer.from_pretrained(
+                    HF_MODEL,
+                    revision=HF_REVISION  # nosec B615
+                )
+                self.tokenizer.save_pretrained(LOCAL_TOKENIZER_PATH)
+                print("[✓] L2: Tokenizer downloaded and cached locally")
             self.session = InferenceSession(ONNX_PATH, providers=["CPUExecutionProvider"])
             print("[✓] L2: ONNX model loaded")
         except Exception as e:
