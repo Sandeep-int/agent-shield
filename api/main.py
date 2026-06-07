@@ -226,6 +226,10 @@ class CheckRequest(BaseModel):
     @field_validator("prompt")
     @classmethod
     def normalize_and_validate(cls, value: str) -> str:
+        try:
+            value.encode("utf-8").decode("utf-8")
+        except (UnicodeDecodeError, UnicodeEncodeError):
+            raise ValueError("Invalid UTF-8 input rejected.")
         cleaned = value.strip()
         if not cleaned:
             raise ValueError("Empty payload.")
