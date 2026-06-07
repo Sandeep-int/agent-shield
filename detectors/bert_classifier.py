@@ -2,26 +2,22 @@ import os
 import time
 import numpy as np
 import hashlib
-from transformers import DistilBertTokenizer
+from transformers import AutoTokenizer  # ← changed from DistilBertTokenizer
 from onnxruntime import InferenceSession
 
-HF_MODEL = "Sandeep120205/agent-shield-distilbert"
-HF_REVISION = "8d9339cfe468013da01a581f3399c1c19c4f51a3"  # pin to verified commit
+HF_MODEL = "Sandeep120205/agent-shield-mdeberta"  # ← changed
+HF_REVISION = "c3ed379d30e4c1a135475a5865a6cfbb16f5c7e0"  # ← paste commit SHA from HF repo → commits tab
 MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
 LOCAL_TOKENIZER_PATH = os.path.join(MODEL_DIR, "fine_tuned_bert")
 ONNX_PATH = os.path.join(MODEL_DIR, "model.onnx")
-ONNX_DATA_PATH = os.path.join(MODEL_DIR, "model.onnx.data")
-BLOB_ONNX = "https://agentshieldmodels.blob.core.windows.net/models/model.onnx"
-BLOB_ONNX_DATA = "https://agentshieldmodels.blob.core.windows.net/models/model.onnx.data"
+BLOB_ONNX = "https://agentshieldmodels.blob.core.windows.net/models/model.onnx"  # ← Azure Blob stays same
 
-# SHA256 checksums for model integrity verification
+# SHA256 checksum for model integrity
 EXPECTED_CHECKSUMS = {
-    "model.onnx": os.environ.get("MODEL_ONNX_SHA256", ""),  # Set in production
-    "model.onnx.data": os.environ.get("MODEL_ONNX_DATA_SHA256", "")  # Set in production
+    "model.onnx": os.environ.get("MODEL_ONNX_SHA256", ""),
 }
 
 def calculate_sha256(filepath: str) -> str:
-    """Calculate SHA256 checksum of a file"""
     sha256_hash = hashlib.sha256()
     with open(filepath, "rb") as f:
         for byte_block in iter(lambda: f.read(4096), b""):
@@ -29,10 +25,9 @@ def calculate_sha256(filepath: str) -> str:
     return sha256_hash.hexdigest()
 
 def verify_checksum(filepath: str, expected: str) -> bool:
-    """Verify file checksum against expected value"""
     if not expected:
         print(f"[!] WARNING: No checksum configured for {os.path.basename(filepath)}")
-        return True  # Skip verification if not configured
+        return True
     actual = calculate_sha256(filepath)
     if actual != expected:
         print(f"[!] CHECKSUM MISMATCH for {os.path.basename(filepath)}")
@@ -52,58 +47,48 @@ def download_file(url: str, dest: str):
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
     print(f"[✓] Downloaded {os.path.basename(dest)}")
-    
-    # Verify checksum after download
     filename = os.path.basename(dest)
     if filename in EXPECTED_CHECKSUMS:
         if not verify_checksum(dest, EXPECTED_CHECKSUMS[filename]):
-            os.remove(dest)  # Delete corrupted file
-            raise RuntimeError(f"Checksum verification failed for {filename} - possible tampering detected!")
+            os.remove(dest)
+            raise RuntimeError(f"Checksum verification failed for {filename}")
 
 class BertClassifier:
     def __init__(self):
         try:
+            # ── Download model.onnx from Blob
             try:
                 if not os.path.exists(ONNX_PATH):
                     download_file(BLOB_ONNX, ONNX_PATH)
                 else:
-                    # Verify existing file
                     if EXPECTED_CHECKSUMS["model.onnx"]:
                         if not verify_checksum(ONNX_PATH, EXPECTED_CHECKSUMS["model.onnx"]):
-                            print(f"[!] Local ONNX file corrupted, re-downloading...")
+                            print(f"[!] Local ONNX corrupted, re-downloading...")
                             download_file(BLOB_ONNX, ONNX_PATH)
-                
-                if not os.path.exists(ONNX_DATA_PATH):
-                    download_file(BLOB_ONNX_DATA, ONNX_DATA_PATH)
-                else:
-                    # Verify existing file
-                    if EXPECTED_CHECKSUMS["model.onnx.data"]:
-                        if not verify_checksum(ONNX_DATA_PATH, EXPECTED_CHECKSUMS["model.onnx.data"]):
-                            print(f"[!] Local ONNX data file corrupted, re-downloading...")
-                            download_file(BLOB_ONNX_DATA, ONNX_DATA_PATH)
             except Exception as e:
                 if not os.path.exists(ONNX_PATH):
                     raise RuntimeError(f"L2 ONNX unavailable and no local cache: {e}") from e
-                print(f"[!] Blob download failed, using cached ONNX weights: {e}")
+                print(f"[!] Blob download failed, using cached ONNX: {e}")
 
+            # ── Load tokenizer
             try:
-                self.tokenizer = DistilBertTokenizer.from_pretrained(
+                self.tokenizer = AutoTokenizer.from_pretrained(  # ← changed
                     HF_MODEL,
                     revision=HF_REVISION,
                 )
             except Exception as e:
                 if not os.path.isdir(LOCAL_TOKENIZER_PATH):
                     raise RuntimeError(
-                        f"L2 tokenizer load failed and no local cache at {LOCAL_TOKENIZER_PATH}: {e}"
+                        f"L2 tokenizer load failed and no local cache: {e}"
                     ) from e
                 print(f"[!] HuggingFace tokenizer fetch failed, using local cache: {e}")
-                self.tokenizer = DistilBertTokenizer.from_pretrained(
+                self.tokenizer = AutoTokenizer.from_pretrained(  # ← changed
                     LOCAL_TOKENIZER_PATH,
                     local_files_only=True,  # nosec B615
                 )
 
             self.session = InferenceSession(ONNX_PATH, providers=["CPUExecutionProvider"])
-            print("[✓] L2: ONNX model loaded")
+            print("[✓] L2: mDeBERTa ONNX model loaded")
         except Exception as e:
             raise RuntimeError(f"L2 load failed: {e}")
 
@@ -114,7 +99,7 @@ class BertClassifier:
                 prompt,
                 return_tensors="np",
                 truncation=True,
-                max_length=128,        # ← NEVER change. Model trained on 128.
+                max_length=128,        # ← NEVER change
                 padding="max_length"
             )
             feeds = {
