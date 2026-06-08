@@ -97,7 +97,9 @@ class GroqL4:
     def _parse_response(self, result: dict) -> dict:
         content = result["choices"][0]["message"]["content"].strip()
         parsed = json.loads(content)
-        verdict = parsed.get("verdict", "SAFE").upper()
+        verdict = parsed.get("verdict", "").upper()
+        if verdict not in {"SAFE", "INJECTION"}:
+            raise ValueError(f"Unknown verdict: {verdict}")
         category = parsed.get("category", "SAFE")
         confidence = float(parsed.get("confidence", 0.5))
         return {"verdict": verdict, "category": category, "confidence": confidence}
