@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from detectors.vigil_scanner import VigilScanner
 from detectors.l3_custom import CustomL3
+from detectors.l4_groq import GroqL4
 from detectors.bert_classifier import MODEL_VERSION
 from api.auth import router as auth_router, validate_token
 from api.secrets_manager import get_secret
@@ -212,6 +213,7 @@ else:
 
 try:
     l3 = CustomL3()
+    l4 = GroqL4()
     logger.info("✓ L3: Custom Rules Engine loaded")
 except Exception as e:
     logger.critical(f"FATAL: L3 Custom Rules failed: {e}")
@@ -342,6 +344,19 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
             layer_hit="L3_CUSTOM_RULES",
             latency_ms=total_latency,
             details={"reason": l3_result.get("reason")}
+        )
+
+    # L4 — Groq Llama3 reasoning
+    l4_result = await l4.check(target_payload)
+    if not l4_result.get("passed"):
+        total_latency = (time.time() - start_time) * 1000
+        log_to_azure(target_payload, "BLOCK", 1.0, "L4_GROQ_LLAMA3", total_latency, client_ip)
+        return CheckResponse(
+            verdict="BLOCK",
+            confidence=1.0,
+            layer_hit="L4_GROQ_LLAMA3",
+            latency_ms=total_latency,
+            details={"reason": l4_result.get("reason")}
         )
 
     total_latency = (time.time() - start_time) * 1000
