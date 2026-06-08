@@ -1,12 +1,23 @@
 from azure.data.tables import TableServiceClient
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import os
+import sys
 
 conn_str = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
-client = TableServiceClient.from_connection_string(conn_str)
-table = client.get_table_client("agentshieldlogs")
-rows = list(table.list_entities())
+if not conn_str:
+    print("ERROR: AZURE_STORAGE_CONNECTION_STRING not set.")
+    sys.exit(1)
+
+try:
+    client = TableServiceClient.from_connection_string(conn_str)
+    table = client.get_table_client("agentshieldlogs")
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    rows = list(table.query_entities(f"Timestamp ge datetime'{cutoff}'"))
+except Exception as e:
+    print(f"ERROR: Azure connection failed — {e}")
+    sys.exit(1)
 
 total = len(rows)
 blocked = sum(1 for r in rows if r.get("verdict") == "BLOCK")
@@ -25,7 +36,7 @@ report = f"""# Agent Shield — Daily Report
 ## Summary
 | Metric | Value |
 |--------|-------|
-| Total Requests | {total} |
+| Total Requests (24h) | {total} |
 | Blocked | {blocked} |
 | Allowed | {allowed} |
 | Missed (Feedback) | {missed} |
