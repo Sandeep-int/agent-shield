@@ -25,6 +25,8 @@ jobs:
       - name: Install build tools
         run: pip install build
 
+      - name: Clean old dist
+        run: rm -rf dist/
       - name: Build package
         run: python -m build
 
