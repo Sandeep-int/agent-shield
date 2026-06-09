@@ -3,8 +3,8 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "agent-shield-int"
-version = "1.0.0"
+name = "agent-shield"
+version = "1.0.1"
 description = "LLM Prompt Injection Detection CLI — 3-layer detection (Vigil + DistilBERT ONNX + Rules)"
 readme = "README.md"
 license = { text = "MIT" }

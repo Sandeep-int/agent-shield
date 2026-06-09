@@ -275,7 +275,11 @@ def _rate_limit_exempt_non_pro() -> bool:
 async def check_prompt(request: Request, req: CheckRequest, api_key: str = Security(verify_api_key)):
     start_time = time.time()
     target_payload = req.prompt
-    client_ip = get_remote_address(request)
+    client_ip = (
+        request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        or get_remote_address(request)
+        or "unknown"
+    )
 
     try:
         vigil_result = scanner.scan(target_payload)
@@ -407,7 +411,11 @@ async def metrics():
 @limiter.limit("10/minute", key_func=get_remote_address)
 @limiter.limit("60/minute", key_func=lambda request: _resolve_api_key(request), exempt_when=_rate_limit_exempt_non_pro)
 async def feedback(request: Request, req: FeedbackRequest, api_key: str = Security(verify_api_key)):
-    client_ip = get_remote_address(request)
+    client_ip = (
+        request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        or get_remote_address(request)
+        or "unknown"
+    )
     try:
         log_to_azure(f"{req.prompt}\n[feedback_reason] {req.reason}", "MISSED", 0.00, "USER_REPORTED", 0.0, client_ip)
     except Exception as e:
