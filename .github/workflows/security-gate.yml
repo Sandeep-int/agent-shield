@@ -47,11 +47,15 @@ jobs:
           from transformers import AutoTokenizer
           os.makedirs('models/fine_tuned_bert', exist_ok=True)
           if not os.path.exists('models/fine_tuned_bert/config.json'):
-              tokenizer = AutoTokenizer.from_pretrained('Sandeep120205/agent-shield-distilbert')
+              token = os.environ.get('HF_TOKEN')
+              tokenizer = AutoTokenizer.from_pretrained(
+                  'Sandeep120205/agent-shield-distilbert',
+                  token=token
+              )
               tokenizer.save_pretrained('models/fine_tuned_bert')
           PYEOF
       - name: Run Unit Tests and Request Schema Audits
         env:
           AGENT_SHIELD_API_KEY: ${{ secrets.AGENT_SHIELD_API_KEY }}
         run: |
-          python -m pytest tests/ -x --tb=short
+          python -m pytest tests/ -x --tb=short --ignore=tests/manual

@@ -169,7 +169,9 @@ app.add_exception_handler(RateLimitExceeded, lambda r, e: JSONResponse(
 ))
 @app.middleware("http")
 async def ip_blocklist_middleware(request: Request, call_next):
-    client_ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or request.client.host or "unknown"
+    # X-Forwarded-For disabled — no trusted proxy yet
+    # Enabling it allows IP spoofing to bypass blocklist
+    client_ip = request.client.host if request.client else "unknown"
     if is_ip_blocked(client_ip):
         logger.warning(f"Middleware blocked IP: {client_ip}")
         return JSONResponse(status_code=403, content={"detail": "Access denied"})
