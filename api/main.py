@@ -60,7 +60,10 @@ def is_ip_blocked(ip: str) -> bool:
         table.get_entity(partition_key="blocked", row_key=ip)
         logger.warning(f"BLOCKED IP attempted access: {ip}")
         return True
-    except Exception:
+    except ResourceNotFoundError:
+        return False
+    except Exception as e:
+        logger.error(f"IP blocklist check failed — fail open: {e}")
         return False
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -164,6 +167,13 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, lambda r, e: JSONResponse(
     status_code=429, content={"detail": "Rate limit exceeded"}
 ))
+@app.middleware("http")
+async def ip_blocklist_middleware(request: Request, call_next):
+    client_ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or request.client.host or "unknown"
+    if is_ip_blocked(client_ip):
+        logger.warning(f"Middleware blocked IP: {client_ip}")
+        return JSONResponse(status_code=403, content={"detail": "Access denied"})
+    return await call_next(request)
 
 @app.middleware("http")
 async def payload_size_guard(request: Request, call_next):
@@ -405,8 +415,7 @@ async def metrics():
 
 
 @app.post("/v1/feedback")
-@limiter.limit("10/minute", key_func=get_remote_address)
-@limiter.limit("60/minute", key_func=lambda request: _resolve_api_key(request), exempt_when=_rate_limit_exempt_non_pro)
+@limiter.limit("120/minute", key_func=get_rate_limit_key)
 async def feedback(request: Request, req: FeedbackRequest, api_key: str = Security(verify_api_key)):
    
     client_ip = get_remote_address(request) or "unknown"
