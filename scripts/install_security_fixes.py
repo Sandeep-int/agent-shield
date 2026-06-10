@@ -4,58 +4,59 @@ Agent Shield - Automated Installation Script
 Installs security fixes with or without ML dependencies
 """
 
+import os
 import subprocess
 import sys
-import os
 
-def run_command(cmd, description):
-    """Run command and handle errors"""
+
+def run_command(cmd_list, description):
     print(f"\n{'='*60}")
     print(f"📦 {description}")
     print(f"{'='*60}")
     try:
-        result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
-        print(result.stdout)
+        result = subprocess.run(cmd_list, check=True, capture_output=True, text=True)
+        if result.stdout:
+            print(result.stdout)
         print(f"✅ {description} - SUCCESS")
         return True
     except subprocess.CalledProcessError as e:
         print(f"❌ {description} - FAILED")
-        print(f"Error: {e.stderr}")
+        if e.stderr:
+            print(f"Error: {e.stderr}")
         return False
+
 
 def main():
     print("""
 ╔══════════════════════════════════════════════════════════╗
-║      AGENT SHIELD - SECURITY FIXES INSTALLATION          ║
+║      AGENT SHIELD - SECURITY FIXES INSTALLATION         ║
 ╚══════════════════════════════════════════════════════════╝
     """)
-    
+
     print("Choose installation mode:")
     print("1. Security Fixes Only (Fastest, no ML)")
     print("2. Full Installation (Includes ML/BERT)")
     print("3. Exit")
-    
+
     choice = input("\nEnter choice (1-3): ").strip()
-    
+
     if choice == "3":
         print("Installation cancelled.")
         return
-    
-    # Upgrade pip first
+
     print("\n🔧 Upgrading pip...")
-    run_command(f"{sys.executable} -m pip install --upgrade pip", "Upgrading pip")
-    
+    run_command([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], "Upgrading pip")
+
     if choice == "1":
-        # Security fixes only
         print("\n📦 Installing SECURITY FIXES ONLY (no ML dependencies)")
         print("This installs: cryptography, keyring, fastapi, azure, etc.")
         print("BERT/ML detection will be DISABLED (L1 and L3 still work)")
-        
+
         requirements_file = "requirements-no-ml.txt"
         if not os.path.exists(requirements_file):
             print(f"❌ File not found: {requirements_file}")
             print("Creating it now...")
-            with open(requirements_file, "w") as f:
+            with open(requirements_file, "w", encoding="utf-8") as f:
                 f.write("""# Security Fixes Only
 fastapi
 uvicorn[standard]
@@ -71,12 +72,9 @@ pyyaml
 pytest
 typing-extensions
 """)
-        
-        success = run_command(
-            f"{sys.executable} -m pip install -r {requirements_file}",
-            "Installing security packages"
-        )
-        
+
+        success = run_command([sys.executable, "-m", "pip", "install", "-r", requirements_file], "Installing security packages")
+
         if success:
             print("\n" + "="*60)
             print("✅ SECURITY FIXES INSTALLED SUCCESSFULLY!")
@@ -91,83 +89,45 @@ typing-extensions
             print("   export LOG_ENCRYPTION_KEY=key_from_step_1")
             print("\n3. Test:")
             print("   python app.py")
-        
+
     elif choice == "2":
-        # Full installation
         print("\n📦 Installing FULL STACK (with ML dependencies)")
         print("This may take several minutes...")
         print("⚠️  Warning: Torch is large (~2GB)")
-        
-        # Try main requirements first
-        success = run_command(
-            f"{sys.executable} -m pip install -r requirements.txt",
-            "Installing all packages"
-        )
-        
+
+        success = run_command([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], "Installing all packages")
+
         if not success:
             print("\n⚠️  Full installation failed. Trying fallback...")
             print("Installing in groups...")
-            
-            # Group 1: Core
-            run_command(
-                f"{sys.executable} -m pip install fastapi uvicorn pydantic slowapi",
-                "Installing core API packages"
-            )
-            
-            # Group 2: Security (CRITICAL)
-            run_command(
-                f"{sys.executable} -m pip install cryptography keyring",
-                "Installing security packages"
-            )
-            
-            # Group 3: Azure
-            run_command(
-                f"{sys.executable} -m pip install azure-storage-blob azure-data-tables",
-                "Installing Azure packages"
-            )
-            
-            # Group 4: HTTP
-            run_command(
-                f"{sys.executable} -m pip install httpx requests",
-                "Installing HTTP packages"
-            )
-            
-            # Group 5: ML (may fail)
+
+            run_command([sys.executable, "-m", "pip", "install", "fastapi", "uvicorn", "pydantic", "slowapi"], "Installing core API packages")
+            run_command([sys.executable, "-m", "pip", "install", "cryptography", "keyring"], "Installing security packages")
+            run_command([sys.executable, "-m", "pip", "install", "azure-storage-blob", "azure-data-tables"], "Installing Azure packages")
+            run_command([sys.executable, "-m", "pip", "install", "httpx", "requests"], "Installing HTTP packages")
+
             print("\n⚠️  Attempting ML packages (may fail on some systems)...")
-            ml_success = run_command(
-                f"{sys.executable} -m pip install torch transformers onnxruntime datasets",
-                "Installing ML packages"
-            )
-            
+            ml_success = run_command([sys.executable, "-m", "pip", "install", "torch", "transformers", "onnxruntime", "datasets"], "Installing ML packages")
+
             if not ml_success:
                 print("\n⚠️  ML packages failed - continuing without BERT")
                 print("    L1 and L3 layers will still work")
-            
-            # Group 6: Utils
-            run_command(
-                f"{sys.executable} -m pip install pyyaml pytest pandas",
-                "Installing utilities"
-            )
-        
+
+            run_command([sys.executable, "-m", "pip", "install", "pyyaml", "pytest", "pandas"], "Installing utilities")
+
         print("\n" + "="*60)
         print("✅ INSTALLATION COMPLETE!")
         print("="*60)
-    
+
     else:
         print("❌ Invalid choice")
         return
-    
-    # Final verification
+
     print("\n" + "="*60)
     print("🔍 VERIFYING CRITICAL PACKAGES")
     print("="*60)
-    
-    critical_packages = [
-        ("cryptography", "Log encryption"),
-        ("keyring", "Token storage"),
-        ("fastapi", "API framework"),
-    ]
-    
+
+    critical_packages = [("cryptography", "Log encryption"), ("keyring", "Token storage"), ("fastapi", "API framework")]
     all_ok = True
     for package, purpose in critical_packages:
         try:
@@ -176,7 +136,7 @@ typing-extensions
         except ImportError:
             print(f"❌ {package:20s} - MISSING ({purpose})")
             all_ok = False
-    
+
     if all_ok:
         print("\n🎉 All critical packages installed successfully!")
         print("\n📋 NEXT STEPS:")
@@ -195,6 +155,7 @@ typing-extensions
     else:
         print("\n❌ Some packages failed to install")
         print("Try: pip install -r requirements-no-ml.txt")
+
 
 if __name__ == "__main__":
     main()
