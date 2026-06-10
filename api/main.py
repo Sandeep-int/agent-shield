@@ -48,6 +48,21 @@ def hash_key(key: str) -> str:
     """BLAKE2b hash — keys stored as hash in Azure, never plain"""
     return hashlib.blake2b(key.encode(), digest_size=32).hexdigest()
 
+def is_ip_blocked(ip: str) -> bool:
+    """Check Azure Table blocklist. Fail open on error — never block legit traffic."""
+    if not AZURE_CONNECTION_STRING:
+        return False
+    try:
+        from azure.data.tables import TableServiceClient
+        from azure.core.exceptions import ResourceNotFoundError
+        service = TableServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
+        table = service.get_table_client("agentshieldblocklist")
+        table.get_entity(partition_key="blocked", row_key=ip)
+        logger.warning(f"BLOCKED IP attempted access: {ip}")
+        return True
+    except Exception:
+        return False
+
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 def _matches_valid_api_key(api_key: str) -> bool:
@@ -136,9 +151,7 @@ def get_rate_limit_key(request: Request) -> str:
     api_key = _resolve_api_key(request)
     if _is_internal_key(api_key):
         return "internal-unlimited"
-    if _is_pro_key(api_key):
-        return f"pro:{api_key}"
-    return f"ip:{get_remote_address(request)}"
+    return "global"
 
 limiter = Limiter(key_func=get_rate_limit_key)
 
@@ -255,28 +268,16 @@ class CheckResponse(BaseModel):
 class FeedbackRequest(CheckRequest):
     reason: str = Field(..., min_length=1, max_length=500)
 
-def _rate_limit_exempt_pro_or_internal() -> bool:
-    return False  # handled by get_rate_limit_key bucket
-
-def _rate_limit_exempt_non_pro() -> bool:
-    return False  # handled by get_rate_limit_key bucket
-
 @app.post("/v1/check", response_model=CheckResponse)
-@limiter.limit(
-    "10/minute",
-    key_func=get_remote_address,
-    exempt_when=_rate_limit_exempt_pro_or_internal,
-)
-@limiter.limit(
-    "60/minute",
-    key_func=lambda request: _resolve_api_key(request),
-    exempt_when=_rate_limit_exempt_non_pro,
-)
+@limiter.limit("120/minute", key_func=get_rate_limit_key)
+
 async def check_prompt(request: Request, req: CheckRequest, api_key: str = Security(verify_api_key)):
     start_time = time.time()
     target_payload = req.prompt
     client_ip = get_remote_address(request) or "unknown"
-
+    if is_ip_blocked(client_ip):
+        log_to_azure(target_payload, "BLOCK", 0.99, "IP_BLOCKLIST", 0.0, client_ip)
+        raise HTTPException(status_code=403, detail="Access denied")
     try:
         vigil_result = scanner.scan(target_payload)
         if vigil_result.get("blocked", False):
