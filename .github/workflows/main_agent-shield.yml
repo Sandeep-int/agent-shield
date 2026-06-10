@@ -68,7 +68,7 @@ jobs:
         env:
           AGENT_SHIELD_API_KEY: ${{ secrets.AGENT_SHIELD_API_KEY }}
         run: |
-          python -m pytest tests/ -x --tb=short
+          python -m pytest tests/ -x --tb=short --ignore=tests/manual
 
   build:
     runs-on: ubuntu-latest
