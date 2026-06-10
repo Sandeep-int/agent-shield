@@ -9,12 +9,12 @@ client = TestClient(app)
 TEST_API_KEY = os.environ.get("AGENT_SHIELD_API_KEY", "test-key")
 HEADERS = {"X-API-Key": TEST_API_KEY}
 
-def test_rate_limit_blocks_after_10():
-    for i in range(10):
+def test_rate_limit_blocks_after_120():
+    for i in range(120):
         response = client.post("/v1/check", json={"prompt": "test"}, headers=HEADERS)
         assert response.status_code == 200, f"Request {i+1} should pass"
     response = client.post("/v1/check", json={"prompt": "test"}, headers=HEADERS)
-    assert response.status_code == 429, "11th request should be blocked"
+    assert response.status_code == 429, "121st request should be blocked"
 
 def test_health_not_rate_limited():
     for i in range(15):
