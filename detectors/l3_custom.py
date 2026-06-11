@@ -505,6 +505,10 @@ class CustomL3:
                                 if re.search(safe_pattern, leet_lower, re.IGNORECASE):
                                     is_safe = True
                                     break
+                                # Fallback: check original prompt for space-dependent patterns
+                                if not is_safe and re.search(safe_pattern, prompt.lower(), re.IGNORECASE):
+                                    is_safe = True
+                                    break
                         
                         if not is_safe:
                             # Spaceless leetspeak with toxic word and NO safe context → BLOCK
