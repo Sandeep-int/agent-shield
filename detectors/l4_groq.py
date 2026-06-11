@@ -123,8 +123,8 @@ class GroqL4:
                 "l4_confidence": confidence
             }
             self.table_client.upsert_entity(entity)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"L4 Azure log write failed: {e}")
 
     async def check(self, prompt: str) -> dict:
         if not self.enabled:

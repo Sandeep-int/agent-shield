@@ -48,8 +48,8 @@ def fetch_and_build_dataset():
         try:
             jbb_check = load_dataset("JailbreakBench/JBB-Behaviors", revision="886acc352a31533ffbcf4ef22c744658688086fc", split="train")
             print(f"    Available columns: {jbb_check.column_names}")
-        except:
-            pass
+        except Exception as e:
+            print(f"    Column check also failed: {e}")
 
     # ── Block 3: Harelix mixed techniques (label=1)
     try:

@@ -6,6 +6,7 @@ import urllib.parse
 import html
 import string
 import logging
+from typing import Optional
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -232,16 +233,16 @@ class CustomL3:
             text = re.sub(r"&#x([0-9a-fA-F]+);", lambda m: chr(int(m.group(1), 16)), text)
             # Decode &#NNN; decimal format
             text = re.sub(r"&#(\d+);", lambda m: chr(int(m.group(1))), text)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Hex decode error: {e}")
         return text
 
     def _decode_octal(self, text: str) -> str:
         """Decode octal escapes: \\NNN"""
         try:
             text = re.sub(r"\\([0-7]{3})", lambda m: chr(int(m.group(1), 8)), text)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Octal decode error: {e}")
         return text
 
     def _decode_base64_aggressive(self, text: str) -> str:
@@ -303,8 +304,8 @@ class CustomL3:
                 chars = [chr(int(binary_str[i:i+8], 2)) for i in range(0, len(binary_str), 8)]
                 return "".join(chars)
             text = re.sub(pattern, binary_to_text, text)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Binary decode error: {e}")
         return text
 
     def _strip_punctuation_obfuscation(self, text: str) -> str:
@@ -378,7 +379,7 @@ class CustomL3:
         
         return list(set(variants))
 
-    def _check_content(self, prompt: str, allow_substring=False, original_prompt: str = None) -> dict | None:
+    def _check_content(self, prompt: str, allow_substring: bool = False, original_prompt: Optional[str] = None) -> Optional[dict]:
         """Check content for violations - optimized
         
         Args:
@@ -491,20 +492,28 @@ class CustomL3:
         for variant in variants:
             leet_decoded = self._decode_leetspeak(variant)
             
-            # Special handling: If decoded text has NO spaces and contains toxic word → BLOCK
-            # This catches obfuscated attacks like "k1llc0mmand" → "killcommand"
+            # Special handling: If decoded text has NO spaces and contains toxic word
+            # Check safe contexts BEFORE blocking to avoid false positives (e.g., "sk1ll" → "skill")
             if leet_decoded != variant and ' ' not in leet_decoded:
-                # Spaceless result after leet decode - check for toxic words as SUBSTRING
                 leet_lower = leet_decoded.lower()
                 for toxic in self.toxic_words:
                     if toxic in leet_lower:
-                        # Spaceless leetspeak concatenation with toxic word → BLOCK immediately
-                        return {
-                            "passed": False,
-                            "reason": f"[LEETSPEAK] Toxic content: {toxic}",
-                            "layer": "L3_LEETSPEAK",
-                            "latency_ms": (time.time() - start) * 1000,
-                        }
+                        # Check safe context before blocking
+                        is_safe = False
+                        if toxic in self.safe_contexts:
+                            for safe_pattern in self.safe_contexts[toxic]:
+                                if re.search(safe_pattern, leet_lower, re.IGNORECASE):
+                                    is_safe = True
+                                    break
+                        
+                        if not is_safe:
+                            # Spaceless leetspeak with toxic word and NO safe context → BLOCK
+                            return {
+                                "passed": False,
+                                "reason": f"[LEETSPEAK] Toxic content: {toxic}",
+                                "layer": "L3_LEETSPEAK",
+                                "latency_ms": (time.time() - start) * 1000,
+                            }
             
             # Normal leetspeak check (decoded text has spaces OR no change)
             result = self._check_content(leet_decoded, original_prompt=prompt)

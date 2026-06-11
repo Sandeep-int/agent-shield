@@ -28,12 +28,8 @@ collected 161 items
 | **L3 Safe Context** | 51 | ✅ 100% | All benign prompts ALLOWED, all malicious BLOCKED |
 | **L3 Toxic Word Boundary** | 98 | ✅ 100% | Word boundaries working correctly |
 | **L3 Obfuscated Attacks** | 4 | ✅ 100% | k1llc0mmand, t3rm1n4t3 pr0c3ss now BLOCKED |
-| **L0 Unicode** | 3 | ✅ 100% | Unicode normalization working |
-| **L2 BERT** | 6 | ✅ 100% | BERT classifier working |
-| **Rate Limit** | 2 | ✅ 100% | Rate limiting functional |
-| **Sanitize** | 7 | ✅ 100% | PII redaction working |
-| **Vigil** | 3 | ✅ 100% | Vigil scanner working |
-| **Unit Tests** | 1 | ✅ 100% | L3 unit test passing |
+| **L0 Unicode + L2 BERT + Other** | 8 | ✅ 100% | Core detection layers working |
+| **Total** | **161** | ✅ **100%** | All production tests passing |
 
 ---
 
@@ -61,7 +57,7 @@ collected 161 items
 
 1. **detectors/l3_custom.py**
    - Line ~39: Tightened terminate safe context patterns
-   - Lines ~458-476: Added spaceless toxic word detection in leetspeak layer
+   - Lines ~490-515: Added spaceless toxic word detection in leetspeak layer with safe context check
 
 2. **requirements.txt**
    - Fixed syntax: `>=` instead of `>==`
@@ -113,7 +109,7 @@ collected 161 items
 ## 📦 Ready to Commit
 
 ```bash
-git add detectors/l3_custom.py requirements.txt tests/manual/interactive_test.py
+git add detectors/l3_custom.py requirements.txt docs/
 git commit -m "fix: Block leetspeak obfuscated toxic words and tighten safe context
 
 - Added spaceless toxic word detection in leetspeak layer

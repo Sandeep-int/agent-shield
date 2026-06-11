@@ -109,8 +109,8 @@ def log_to_azure(prompt, verdict, confidence, layer_hit, latency_ms, client_ip):
         table = service.get_table_client("agentshieldlogs")
         try:
             service.create_table("agentshieldlogs")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Table 'agentshieldlogs' already exists or creation failed: {e}")
         entity = {
             "PartitionKey": verdict,
             "RowKey": str(time.time_ns()),
