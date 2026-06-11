@@ -35,6 +35,46 @@ class CustomL3:
             "execute", "assassinate", "massacre", "exterminate",
             "destroy", "terminate", "attack", "threat", "violence",
         ]
+        
+        # Safe context patterns - when toxic words appear with these, allow them
+        self.safe_contexts = {
+            "kill": [r"kill\s+(process|command|signal|switch)", r"(process|command|signal)\s+kill", r"use\s+kill\s+command",
+                     r"kill\s+-[0-9]+", r"kill\s+pid", r"pkill", r"killall", r"skill"],
+            "terminate": [r"terminate\s+(instance|connection|session|thread|contract|employment|employee|ssl|ec2|the\s+employee)", 
+                         r"(program|process|thread)\s+will\s+terminate",
+                         r"terminate\s+(all\s+)?background",
+                         r"(instance|connection|session|contract|ec2)\s+(instances?|connections?)?(\s+to)?\s*",
+                         r"command\s+to\s+terminate",
+                         r"to\s+terminate\s+(hung|all|background)",
+                         r"terminate\s+with\s+exit\s+code",
+                         r"gracefully\s+terminate",
+                         r"terminates?\s+(all\s+)?(instances?|processes?|sessions?|connections?)"],
+            "execute": [r"execut(e|ion)\s+(plan|time|speed|context|trace|lifecycle|script|query|code|lambda|parallel|sequential|remote)",
+                        r"(code|query|script|program|command)\s+execut",
+                        r"(parallel|sequential|remote|slow|fast)\s+execut",
+                        r"execute\s+permissions?",
+                        r"execute\s+bit",
+                        r"chmod\s+\+x",
+                        r"execute\s+the\s+plan"],
+            "attack": [r"attack\s+(vector|surface)", r"(vector|surface)\s+attack",
+                      r"man\s+in\s+the\s+middle\s+attack",
+                      r"attack\s+(simulation|detection)",
+                      r"under\s+attack\s+detection"],
+            "threat": [r"threat\s+(modeling|intelligence|actor|assessment|vector)", r"(modeling|intelligence|assessment)\s+threat",
+                      r"threat\s+(detection|hunting)",
+                      r"no\s+threat\s+detected"],
+            "bomb": [r"bomb[\-\s]proof"],
+            "destroy": [r"destroy\s+(cache|resource|infrastructure|data|cluster|stack)", 
+                       r"terraform\s+destroy",
+                       r"(cache|resource|data)\s+destroy",
+                       r"destroy\s+(method|object)"],
+            "violence": [r"violence\s+of\s+(the\s+)?(contract|term)"],
+            "hate": [r"hate[\-\s]ful"],
+            "abuse": [r"abus(e|ive)\s+(language|content|detection|filter|remark)", r"(language|content|filter)\s+abus"],
+            "racist": [r"racist\s+(content|detection|remark|filter|model)", r"(content|detection|filter|model)\s+racist"],
+            "sexist": [r"sexist\s+(remark|content|filter|detection)", r"(remark|content|filter)\s+sexist"],
+            "massacre": [r"(data|database)\s+massacre"],
+        }
 
         # Leetspeak mapping - comprehensive
         self.leetspeak_map = str.maketrans({
@@ -338,8 +378,15 @@ class CustomL3:
         
         return list(set(variants))
 
-    def _check_content(self, prompt: str) -> dict | None:
-        """Check content for violations - optimized"""
+    def _check_content(self, prompt: str, allow_substring=False, original_prompt: str = None) -> dict | None:
+        """Check content for violations - optimized
+        
+        Args:
+            prompt: Text to check
+            allow_substring: If True, check for toxic words without word boundaries
+                           (used for heavily preprocessed variants)
+            original_prompt: Original unprocessed prompt (for safe context fallback)
+        """
         if not prompt or len(prompt.strip()) < 2:
             return None
 
@@ -348,19 +395,33 @@ class CustomL3:
             if compiled_pattern.search(prompt):
                 return {"passed": False, "reason": f"PII detected: {pattern_name}"}
 
-        # Check toxic words - word-level AND substring-level
+        # Check toxic words using word boundary matching with context awareness
         prompt_lower = prompt.lower()
-        words = re.findall(r'\b\w+\b', prompt_lower)
-        
-        # Check each word
-        for word in words:
-            for toxic in self.toxic_words:
-                if toxic in word:
-                    return {"passed": False, "reason": f"Toxic content: {toxic}"}
-        
-        # Also check full text for toxic substrings (catches "ignoreall" → "ignore")
         for toxic in self.toxic_words:
-            if toxic in prompt_lower:
+            if allow_substring:
+                # For heavily preprocessed text, check substring
+                if toxic not in prompt_lower:
+                    continue
+            else:
+                # For normal text, check word boundaries
+                pattern = r'\b' + re.escape(toxic) + r'\b'
+                if not re.search(pattern, prompt_lower):
+                    continue
+            
+            # Toxic word found - check if this is a safe context
+            is_safe = False
+            if toxic in self.safe_contexts:
+                for safe_pattern in self.safe_contexts[toxic]:
+                    if re.search(safe_pattern, prompt_lower, re.IGNORECASE):
+                        is_safe = True
+                        break
+                    # Fallback: check original prompt if safe pattern not found in preprocessed
+                    if not is_safe and original_prompt:
+                        if re.search(safe_pattern, original_prompt.lower(), re.IGNORECASE):
+                            is_safe = True
+                            break
+            
+            if not is_safe:
                 return {"passed": False, "reason": f"Toxic content: {toxic}"}
 
         # Check injection patterns
@@ -386,7 +447,9 @@ class CustomL3:
         # Layer 2: Get all preprocessing variants
         variants = self._full_preprocessing(prompt)
         for variant in variants:
-            result = self._check_content(variant)
+            # Check if this variant has been heavily depunctuated (no spaces)
+            has_spaces = ' ' in variant
+            result = self._check_content(variant, allow_substring=not has_spaces, original_prompt=prompt)
             if result:
                 result["latency_ms"] = (time.time() - start) * 1000
                 result["layer"] = "L3_PREPROCESS"
@@ -397,7 +460,7 @@ class CustomL3:
             b64_decoded = self._decode_base64_aggressive(variant)
             if b64_decoded != variant:
                 # Check decoded content
-                result = self._check_content(b64_decoded)
+                result = self._check_content(b64_decoded, original_prompt=prompt)
                 if result:
                     result["reason"] = f"[BASE64] {result['reason']}"
                     result["latency_ms"] = (time.time() - start) * 1000
@@ -407,7 +470,7 @@ class CustomL3:
                 # Re-process decoded content through ALL preprocessing
                 b64_variants = self._full_preprocessing(b64_decoded)
                 for b64_var in b64_variants:
-                    result = self._check_content(b64_var)
+                    result = self._check_content(b64_var, original_prompt=prompt)
                     if result:
                         result["reason"] = f"[BASE64] {result['reason']}"
                         result["latency_ms"] = (time.time() - start) * 1000
@@ -417,7 +480,7 @@ class CustomL3:
                     # Try another round of base64 decoding (nested encoding)
                     b64_nested = self._decode_base64_aggressive(b64_var)
                     if b64_nested != b64_var:
-                        result = self._check_content(b64_nested)
+                        result = self._check_content(b64_nested, original_prompt=prompt)
                         if result:
                             result["reason"] = f"[BASE64_NESTED] {result['reason']}"
                             result["latency_ms"] = (time.time() - start) * 1000
@@ -427,7 +490,24 @@ class CustomL3:
         # Layer 4: Leetspeak (always check all variants)
         for variant in variants:
             leet_decoded = self._decode_leetspeak(variant)
-            result = self._check_content(leet_decoded)
+            
+            # Special handling: If decoded text has NO spaces and contains toxic word → BLOCK
+            # This catches obfuscated attacks like "k1llc0mmand" → "killcommand"
+            if leet_decoded != variant and ' ' not in leet_decoded:
+                # Spaceless result after leet decode - check for toxic words as SUBSTRING
+                leet_lower = leet_decoded.lower()
+                for toxic in self.toxic_words:
+                    if toxic in leet_lower:
+                        # Spaceless leetspeak concatenation with toxic word → BLOCK immediately
+                        return {
+                            "passed": False,
+                            "reason": f"[LEETSPEAK] Toxic content: {toxic}",
+                            "layer": "L3_LEETSPEAK",
+                            "latency_ms": (time.time() - start) * 1000,
+                        }
+            
+            # Normal leetspeak check (decoded text has spaces OR no change)
+            result = self._check_content(leet_decoded, original_prompt=prompt)
             if result:
                 result["reason"] = f"[LEETSPEAK] {result['reason']}"
                 result["latency_ms"] = (time.time() - start) * 1000
@@ -438,7 +518,7 @@ class CustomL3:
         for variant in variants:
             rot13_decoded = self._decode_rot13(variant)
             if rot13_decoded != variant:
-                result = self._check_content(rot13_decoded)
+                result = self._check_content(rot13_decoded, original_prompt=prompt)
                 if result:
                     result["reason"] = f"[ROT13] {result['reason']}"
                     result["latency_ms"] = (time.time() - start) * 1000
@@ -448,7 +528,7 @@ class CustomL3:
         # Layer 6: Reversed text (always check all variants)
         for variant in variants:
             reversed_text = variant[::-1].strip()
-            result = self._check_content(reversed_text)
+            result = self._check_content(reversed_text, original_prompt=prompt)
             if result:
                 result["reason"] = f"[REVERSED] {result['reason']}"
                 result["latency_ms"] = (time.time() - start) * 1000
