@@ -3,9 +3,11 @@ import json
 import asyncio
 import hashlib
 import httpx
+import logging
 from collections import OrderedDict
 from azure.data.tables import TableServiceClient
-import logging
+
+logger = logging.getLogger(__name__)
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "llama-3.3-70b-versatile"
@@ -123,8 +125,8 @@ class GroqL4:
                 "l4_confidence": confidence
             }
             self.table_client.upsert_entity(entity)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"L4 Azure log write failed: {e}")
 
     async def check(self, prompt: str) -> dict:
         if not self.enabled:

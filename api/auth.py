@@ -35,8 +35,8 @@ def get_table_client():
     service = TableServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
     try:
         service.create_table("agentshieldtokens")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Table 'agentshieldtokens' already exists or creation failed: {e}")
     return service.get_table_client("agentshieldtokens")
 
 

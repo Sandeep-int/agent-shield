@@ -14,7 +14,11 @@ import json
 import time
 import threading
 import webbrowser
+import logging
 from pathlib import Path
+
+logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger(__name__)
 
 try:
     import keyring
@@ -96,8 +100,8 @@ def load_token() -> str | None:
         # Fallback to file
         if TOKEN_FILE.exists():
             return TOKEN_FILE.read_text().strip()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Token load failed: {e}")
     return None
 
 def save_token(token: str):
@@ -129,8 +133,8 @@ def delete_token():
         
         # Delete from file
         TOKEN_FILE.unlink(missing_ok=True)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Token delete failed: {e}")
 
 def get_api_key(explicit_key: str | None = None) -> str | None:
     """
@@ -199,8 +203,8 @@ def cmd_auth(revoke: bool = False):
                 method="POST"
             )
             safe_urlopen(req, timeout=10)
-        except Exception:
-            pass  # revoke best-effort
+        except Exception as e:
+            logger.debug(f"Token revoke failed (best-effort): {e}")
         delete_token()
         print(_c(_GREEN, "  ✔  Token revoked. You are logged out."))
         print()
