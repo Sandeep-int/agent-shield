@@ -35,20 +35,18 @@ jobs:
         id: pip-cache
         with:
           path: ~/.cache/pip
-          key: pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: pip-
+          key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
 
       - name: Install System Dependencies
-        if: steps.pip-cache.outputs.cache-hit != 'true'
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
           pip install pytest bandit pip-audit
 
-      - name: Install audit tools only (cached run)
-        if: steps.pip-cache.outputs.cache-hit == 'true'
+      - name: Install Project Dependencies
         run: |
-          pip install pytest bandit pip-audit --quiet
+          pip install -r requirements.txt
 
       - name: Execute Pipeline Integrity Audits
         run: |
