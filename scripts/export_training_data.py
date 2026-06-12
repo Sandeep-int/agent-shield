@@ -11,8 +11,16 @@ rows = [dict(e) for e in entities]
 
 df = pd.DataFrame(rows)
 
+if df.empty:
+    print("No data in Azure Table — nothing to export")
+    exit(0)
+
 cols = ["prompt", "verdict", "layer_hit", "timestamp"]
 df = df[[c for c in cols if c in df.columns]]
+
+if "verdict" not in df.columns:
+    print("No verdict column found — check table schema")
+    exit(1)
 
 blocked = df[df["verdict"] == "BLOCK"]
 allowed = df[df["verdict"] == "ALLOW"]

@@ -359,9 +359,9 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
             details={"reason": l3_result.get("reason")}
         )
 
-    # L4 — Groq Llama3 reasoning (advisory only — never blocks)
-    l4_result = await l4.check(target_payload)
-    l4_advisory = l4_result.get("reason", "L4_SAFE")
+    # L4 — Groq Llama3 reasoning (fire and forget — never blocks)
+    asyncio.ensure_future(l4.check(target_payload))
+    l4_advisory = "L4_ADVISORY_ASYNC" 
 
     total_latency = (time.time() - start_time) * 1000
     log_to_azure(target_payload, "ALLOW", 0.00, "COMPREHENSIVE_PASS", total_latency, client_ip)
