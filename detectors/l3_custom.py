@@ -97,7 +97,7 @@ class CustomL3:
             r"override\s+(all\s+)?(previous|prior|above|earlier|your)\s+(instructions?|rules|settings)",
             r"do\s+not\s+follow\s+(previous|prior|above|earlier|any)\s+instructions?",
             r"\bignore\b(?!\s+(the|this|that|noise|warning|errors?|and\s+focus))",
-            r"(show|tell|reveal|display|print|output|what\s+(is|are))\s+(me\s+)?(your\s+)?(system\s+)?(rules?|prompt|instructions?|directives?|configuration|context)",
+            r"(show|tell|reveal|display|print|output)\s+(me\s+)?(your\s+)(system\s+)?(rules?|prompt|instructions?|directives?|configuration|context)",
             r"you\s+(are|'re)\s+now\s+(an?|the)?\s*\w+",
             r"act\s+as\s+(an?|the)?\s*\w+",
             r"actas(an?|the)?\w+",  # Concatenated form
