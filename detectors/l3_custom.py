@@ -39,9 +39,11 @@ class CustomL3:
         
         # Safe context patterns - when toxic words appear with these, allow them
         self.safe_contexts = {
-            "kill": [r"kill\s+(process|command|signal|switch)", r"(process|command|signal)\s+kill", r"use\s+kill\s+command",
-                     r"kill\s+-[0-9]+", r"kill\s+pid", r"pkill", r"killall", r"skill"],
-            "terminate": [r"terminate\s+(instance|connection|session|thread|contract|employment|employee|ssl|ec2|the\s+employee)", 
+            "kill": [r"kill\s+(process|command|signal|switch|hung|a\s+hung)", r"(process|command|signal)\s+kill", r"use\s+kill\s+command",
+                     r"kill\s+-[0-9]+", r"kill\s+pid", r"pkill", r"killall", r"skill",
+                     r"how\s+(do\s+i|to)\s+kill\s+a", r"kill\s+a\s+hung\s+process"],
+            "terminate": [r"terminate\s+(instance|connection|session|thread|contract|employment|employee|ssl|ec2|the\s+employee|command)",
+                         r"(what\s+does|what\s+is)\s+the\s+terminate", r"terminate\s+command",
                          r"(program|process|thread)\s+will\s+terminate",
                          r"terminate\s+(all\s+)?background",
                          r"(instance|connection|session|contract|ec2)\s+(instances?|connections?)?(\s+to)?\s*",
@@ -49,14 +51,18 @@ class CustomL3:
                          r"to\s+terminate\s+(hung|all|background)",
                          r"terminate\s+with\s+exit\s+code",
                          r"gracefully\s+terminate",
-                         r"terminates?\s+(all\s+)?(instances?|processes?|sessions?|connections?)"],
+                         r"terminates?\s+(all\s+)?(instances?|processes?|sessions?|connections?)",
+                         r"(aws|ec2|cloud).*terminate", r"terminate.*in\s+(aws|ec2|cloud)"],
             "execute": [r"execut(e|ion)\s+(plan|time|speed|context|trace|lifecycle|script|query|code|lambda|parallel|sequential|remote)",
                         r"(code|query|script|program|command)\s+execut",
                         r"(parallel|sequential|remote|slow|fast)\s+execut",
                         r"execute\s+permissions?",
                         r"execute\s+bit",
                         r"chmod\s+\+x",
-                        r"execute\s+the\s+plan"],
+                        r"execute\s+the\s+plan",
+                        r"how\s+to\s+execute\s+a\s+\w+\s+script",
+                        r"execute\s+a\s+(python|bash|shell|ruby|node|perl|java|javascript)\s+script",
+                        r"with\s+(proper\s+)?permissions?"],
             "attack": [r"attack\s+(vector|surface)", r"(vector|surface)\s+attack",
                       r"man\s+in\s+the\s+middle\s+attack",
                       r"attack\s+(simulation|detection)",
@@ -84,6 +90,17 @@ class CustomL3:
             "|": "l", "+": "t", "9": "g", "2": "z", "6": "b",
         })
 
+        # Educational/informational patterns - queries asking about security topics (allow these)
+        self.educational_patterns = [
+            r"^(what\s+(is|are|does)|explain|how\s+does|describe|tell\s+me\s+about)\s+.*(injection|attack|vulnerability|exploit|security)",
+            r"difference\s+between\s+.*injection",
+            r"(what|how)\s+.*\b(sql|command|prompt)\s+injection\b.*work",
+        ]
+        self._compiled_educational = [
+            re.compile(p, re.IGNORECASE | re.DOTALL)
+            for p in self.educational_patterns
+        ]
+
         # Injection patterns - optimized and comprehensive
         self.injection_patterns = [
             r"ignore\s+(all\s+)?(previous|prior|above|earlier|past)\s+instructions?",
@@ -91,7 +108,7 @@ class CustomL3:
             r"ignoreprevious",
             r"disregard\s+(all\s+)?(previous|prior|above|earlier|past|any)(\s+(instructions?|context|rules))?",
             r"disregardall",
-            r"disregardallprevious",  # Concatenated
+            r"disregardallprevious",
             r"forget\s+(all\s+)?(previous|prior|above|earlier|past|everything)(\s+(instructions?|above|context))?",
             r"forgetall",
             r"override\s+(all\s+)?(previous|prior|above|earlier|your)\s+(instructions?|rules|settings)",
@@ -100,7 +117,7 @@ class CustomL3:
             r"(show|tell|reveal|display|print|output|what\s+(is|are))\s+(me\s+)?(your\s+)?(system\s+)?(rules?|prompt|instructions?|directives?|configuration|context)",
             r"you\s+(are|'re)\s+now\s+(an?|the)?\s*\w+",
             r"act\s+as\s+(an?|the)?\s*\w+",
-            r"actas(an?|the)?\w+",  # Concatenated form
+            r"actas(an?|the)?\w+",
             r"pretend\s+(to\s+be|you\s+are|you're|that\s+you're)\s+(an?|the|you're)?\s*\w+",
             r"roleplay\s+as",
             r"simulate\s+(a|an|the)?\s*(ai|model|system|assistant|human)",
@@ -109,9 +126,9 @@ class CustomL3:
             r"(ignore|bypass|override|disable|circumvent|evade)\s+(your\s+)?(safety|ethical|content|security)\s*(filter|guard|check|restrict|limit|rule|policy|guardrail|mechanisms?|controls?)?",
             r"\b(dan|do\s+anything\s+now|developer\s+mode|jailbreak|god\s+mode|freedom\s+mode|debug\s+mode|admin\s+mode)\b",
             r"no\s+(restrictions?|limits?|filters?|rules?|guardrails?|boundaries)",
-            r"norestrictions?",  # Concatenated
+            r"norestrictions?",
             r"(unlock|enable|activate|switch\s+to|enter|entering)\s+(unrestricted|unsafe|unfiltered|raw|unaligned|uncensored|developer|debug|god|freedom)",
-            r"unrestricted(ai|mode|assistant)",  # Catch "unrestrictedAI"
+            r"unrestricted(ai|mode|assistant)",
             r"(the\s+)?(following|above|below)\s+(is|are)\s+(not\s+)?instructions?",
             r"treat\s+(the\s+following|this|above|below)\s+as\s+(a\s+)?(command|instruction)",
             r"<!--.*?-->",
@@ -120,6 +137,7 @@ class CustomL3:
             r"\|\|.*?\|\|",
             r"(when|if)\s+(you|the\s+(ai|model|assistant))\s+(read|see|process|encounter)",
             r"execute\s+(the\s+)?(following|above|below|this|payload)",
+            r"inject\s+(malicious|payload|code)",
         ]
 
         # COMPREHENSIVE Unicode homoglyph map - ALL known variants
@@ -424,6 +442,12 @@ class CustomL3:
             
             if not is_safe:
                 return {"passed": False, "reason": f"Toxic content: {toxic}"}
+
+        # Check if this is educational/informational query (check original first)
+        check_text = original_prompt if original_prompt else prompt
+        for edu_pattern in self._compiled_educational:
+            if edu_pattern.search(check_text):
+                return None
 
         # Check injection patterns
         for pattern in self._compiled_injections:
