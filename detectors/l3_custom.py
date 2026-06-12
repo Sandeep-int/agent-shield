@@ -40,7 +40,9 @@ class CustomL3:
         # Safe context patterns - when toxic words appear with these, allow them
         self.safe_contexts = {
             "kill": [r"kill\s+(process|command|signal|switch)", r"(process|command|signal)\s+kill", r"use\s+kill\s+command",
-                     r"kill\s+-[0-9]+", r"kill\s+pid", r"pkill", r"killall", r"skill"],
+                     r"kill\s+-[0-9]+", r"kill\s+pid", r"pkill", r"killall", r"skill",
+                     r"kill\s+a\s+(hung|zombie|stuck|frozen)\s+(process|thread|task)",
+                     r"how\s+(do\s+i|to)\s+kill\s+a\s+(hung|zombie|stuck|frozen)\s+(process|thread|task)"],
             "terminate": [r"terminate\s+(instance|connection|session|thread|contract|employment|employee|ssl|ec2|the\s+employee)", 
                          r"(program|process|thread)\s+will\s+terminate",
                          r"terminate\s+(all\s+)?background",
@@ -56,7 +58,9 @@ class CustomL3:
                         r"execute\s+permissions?",
                         r"execute\s+bit",
                         r"chmod\s+\+x",
-                        r"execute\s+the\s+plan"],
+                        r"execute\s+the\s+plan",
+                        r"execute\s+\S+\s+(script|program|file)",
+                        r"how\s+to\s+execute\s+.*script"],
             "attack": [r"attack\s+(vector|surface)", r"(vector|surface)\s+attack",
                       r"man\s+in\s+the\s+middle\s+attack",
                       r"attack\s+(simulation|detection)",
