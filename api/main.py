@@ -359,18 +359,9 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
             details={"reason": l3_result.get("reason")}
         )
 
-    # L4 — Groq Llama3 reasoning
+    # L4 — Groq Llama3 reasoning (advisory only — never blocks)
     l4_result = await l4.check(target_payload)
-    if not l4_result.get("passed"):
-        total_latency = (time.time() - start_time) * 1000
-        log_to_azure(target_payload, "BLOCK", 1.0, "L4_GROQ_LLAMA3", total_latency, client_ip)
-        return CheckResponse(
-            verdict="BLOCK",
-            confidence=1.0,
-            layer_hit="L4_GROQ_LLAMA3",
-            latency_ms=total_latency,
-            details={"reason": l4_result.get("reason")}
-        )
+    l4_advisory = l4_result.get("reason", "L4_SAFE")
 
     total_latency = (time.time() - start_time) * 1000
     log_to_azure(target_payload, "ALLOW", 0.00, "COMPREHENSIVE_PASS", total_latency, client_ip)
@@ -379,7 +370,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
         confidence=0.00,
         layer_hit="COMPREHENSIVE_PASS",
         latency_ms=total_latency,
-        details={"all_checks": "verified_clean"},
+        details={"all_checks": "verified_clean", "l4_advisory": l4_advisory},
         model_version=MODEL_VERSION
     )
 
