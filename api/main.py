@@ -360,7 +360,8 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
         )
 
     # L4 — Groq Llama3 reasoning (fire and forget — never blocks)
-    asyncio.ensure_future(l4.check(target_payload))
+    _l4_task = asyncio.ensure_future(l4.check(target_payload))
+    _l4_task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
     l4_advisory = "L4_ADVISORY_ASYNC" 
 
     total_latency = (time.time() - start_time) * 1000
