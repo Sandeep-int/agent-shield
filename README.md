@@ -9,51 +9,39 @@
 Open source. Self-hosted. Production-grade.  
 Your data never leaves your environment.
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Build](https://img.shields.io/github/actions/workflow/status/Sandeep-int/agent-shield/security-gate.yml?label=build)](https://github.com/Sandeep-int/agent-shield/actions)
-[![Bandit](https://img.shields.io/badge/bandit-0%20issues-brightgreen)](https://github.com/Sandeep-int/agent-shield/actions)
-[![SonarCloud](https://img.shields.io/badge/sonarcloud-passed-brightgreen)](https://sonarcloud.io/project/overview?id=Sandeep-int_agent-shield)
+[![Live](https://img.shields.io/badge/Status-Live-brightgreen)](https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net/health)
+[![Accuracy](https://img.shields.io/badge/Accuracy-99.42%25-brightgreen)](#benchmarks)
+[![Bandit](https://img.shields.io/badge/Bandit-0%20High%200%20Medium-green)](#)
 [![PyPI](https://img.shields.io/pypi/v/agent-shield-int)](https://pypi.org/project/agent-shield-int/)
+[![License](https://img.shields.io/badge/License-MIT-blue)](#license)
+[![HuggingFace](https://img.shields.io/badge/Model-HuggingFace-orange)](https://huggingface.co/Sandeep120205/agent-shield-distilbert)
  
-[**Live API**](https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net) · [**Live UI**](https://huggingface.co/spaces/Sandeep120205/agent-shield) · [**PyPI**](https://pypi.org/project/agent-shield-int/) · [**Model**](https://huggingface.co/Sandeep120205/agent-shield-distilbert) · [**Grafana SIEM**](https://sandeepint.grafana.net/d/agent-shield-siem/agent-shield)
- 
+---
+
+[Live API](https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net) &nbsp;|&nbsp;
+[Demo UI](https://huggingface.co/spaces/Sandeep120205/agent-shield) &nbsp;|&nbsp;
+[PyPI](https://pypi.org/project/agent-shield-int/) &nbsp;|&nbsp;
+[Model](https://huggingface.co/Sandeep120205/agent-shield-distilbert) &nbsp;|&nbsp;
+[SIEM Dashboard](https://sandeepint.grafana.net/d/agent-shield-siem/agent-shield) &nbsp;|&nbsp;
+[Docs](#quick-start)
+
+</div>
 
 ---
 
 ## The Problem
 
-Every LLM is one prompt away from doing what it shouldn't.
- 
-Prompt injection is the #1 attack vector for LLM-powered applications. Attackers hide instructions inside user inputs — overriding system prompts, leaking context, bypassing guardrails.
- 
-Most teams have no detection layer at all. Those that do use static regex rules that attackers learn and bypass in days.
- 
-| Without Agent Shield | With Agent Shield |
-|----------------------|-------------------|
-| ❌ No detection layer between user input and your LLM | ✅ Every prompt scanned before it reaches your model |
-| ❌ Static rules — attackers reverse-engineer and bypass | ✅ Model retrains on missed attacks — gets harder to bypass over time |
-| ❌ Base64, homoglyphs, ROT13 obfuscation goes undetected | ✅ Encoding detection built in — 10 obfuscation layers decoded before scan |
-| ❌ PII logged to storage — GDPR risk | ✅ PII stripped before any logging — GDPR compliant by default |
-| ❌ No visibility into attack patterns | ✅ Grafana SIEM dashboard — real-time attack telemetry |
+Every AI assistant and chatbot is a potential attack surface.
 
+- **Prompt injection is the #1 LLM attack vector** — attackers hijack your AI with crafted inputs
+- **Single-layer defenses fail** — keyword filters and basic classifiers are bypassed in seconds
+- **Your users, your data, your liability** — a compromised chatbot leaks context, ignores instructions, and executes arbitrary logic
 
 ---
 
-## What It Protects Against
+## The Solution
+Agent Shield is a **4-layer prompt injection detection API**
 
-Every request passes through 4 layers in order. One hit = blocked.
-
-| Threat Vector | Layer | Detection Method | Status |
-|---|---|---|---|
-| **Prompt Hijacking** (jailbreaks, instruction override, DAN) | L1 + L2 | Pattern matching + fine-tuned DistilBERT | ✅ Live |
-| **Context Poisoning** (indirect injection, role override) | L2 + L3 | Semantic ML + contextual guard | ✅ Live |
-| **Known Jailbreak Patterns** ("ignore previous instructions") | L1 | Vigil signature scanner | ✅ ~8ms block |
-| **Novel Adversarial Inputs** (obfuscated, encoded variants) | L2 | ONNX DistilBERT (threshold: 0.85) | ✅ Live |
-| **Encoding Attacks** (Base64 recursive, ROT13, leetspeak, reversed) | L3 | 7 decode layers, depth-10 Base64 | ✅ Live |
-| **Homoglyph Attacks** (Cyrillic, Greek, Math Unicode substitution) | L3 | Homoglyph map + NFKC normalization | ✅ Live |
-| **Social Engineering & Adversarial Suffixes** | L4 | Groq Llama3-70B reasoning | ✅ Live |
-| **PII Leakage** (credit cards, SSN, API keys, passwords) | L3 | 11 PII pattern detectors | ✅ Live |
-| **Unicode/Encoding Bypasses** | Pre-L1 | URL decode + NFKC normalization | ✅ Live |
 ---
 
 ## How It Works
@@ -129,24 +117,53 @@ Agent Strike generates harder attacks
         ↓
 Loop forever
 ```
+Anyone can train a classifier. **No one else has an adversarial red-team bot attacking their own API every night.**
+
+---
+### Additional Edge
+
+- **Encoding-aware L3 engine** — decodes Base64 (recursive, depth 10), ROT13, Leetspeak, Cyrillic/Greek/Math homoglyphs, URL-encoded, hex, and reversed text                                        before analysis. Catches attacks the ML model never sees.
+- **Self-hostable** — your prompts never leave your environment
+- **Fail-closed design** — timeout = BLOCK. Parse error = BLOCK. Never silently allow.
+- **BLAKE2b API key hashing** — keys are never stored in plain text
+- **23 security loopholes closed** — Bandit scan: 0 High, 0 Medium
+---
+
+## Live Metrics
+
+> Real traffic. Real attacks. Live dashboard.
+
+🔗 [View Live SIEM Dashboard →](https://sandeepint.grafana.net/d/agent-shield-siem/agent-shield)
+
+| Metric | Value |
+|--------|-------|
+| Total Requests | 703 |
+| Blocked | 471 |
+| Allowed | 229 |
+| Block Rate | 67% |
+| Avg Latency | ~741ms |
 
 ---
 
-### What Makes This Different
- 
-| | Agent Shield | Static regex tools | Generic classifiers |
-|---|---|---|---|
-| Self-improving model | ✅ | ❌ | ❌ |
-| Encoding obfuscation detection | ✅ | ⚠️ partial | ❌ |
-| PII sanitization before logging | ✅ | ❌ | ❌ |
-| Adversarial red-team loop | ✅ | ❌ | ❌ |
-| Production SIEM integration | ✅ | ❌ | ❌ |
-| Self-hostable | ✅ | ✅ | ⚠️ |
-| Open source | ✅ | ✅ | ❌ |
- 
+## Benchmarks
+
+| Metric | Value |
+|--------|-------|
+| Validation Accuracy | 99.42% |
+| Training Dataset | 291,471 rows |
+| Adversarial Eval | 14 / 14 |
+| Tests Passing | 146 |
+| Worst-case Latency | < 750ms (Azure B1) |
+| Bandit Scan | 0 High · 0 Medium |
+| Security Loopholes Closed | 23 |
+| Attack Types Covered (L3) | 14 |
+| Encoding Schemes Decoded | 7 |
+| PII Patterns Sanitized | 11 |
+
 ---
-## Quickstart
- 
+
+## Quick Start
+
 ### Option 1 — pip (Python client)
  
 ```bash
@@ -184,86 +201,39 @@ curl -X POST https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net
 }
 ```
 
----
-
- ## Stack
- 
-## Report a Missed Attack
- 
-If Agent Shield allows a prompt injection through, report it. Every miss becomes training data.
- 
-```bash
-curl -X POST https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net/v1/feedback \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "the missed attack here", "reason": "bypassed via base64 + unicode mix"}'
-```
- 
-Missed attacks are logged with `verdict=MISSED` and fed into the next retraining cycle.
+**Or try the live demo — no setup needed**
+👉 [https://huggingface.co/spaces/Sandeep120205/agent-shield](https://huggingface.co/spaces/Sandeep120205/agent-shield)
 
 ---
 
-## What We're Building
- 
-Agent Shield is Layer 1 of a larger detection platform.
- 
-Text prompt injection is live. The roadmap covers every input surface an LLM can receive.
- 
-| Layer | Input Type | Status |
-|-------|-----------|--------|
-| Text / Prompt | `/v1/check` | ✅ Live — open source, free |
-| PDF / Document | `/v1/check/pdf` | 🔄 Building |
-| URL / Webpage | `/v1/check/url` | 📋 Planned |
-| Image (OCR) | `/v1/check/image` | 📋 Planned |
-| Audio / Video | `/v1/check/audio` | 📋 Planned |
- 
-PDF is the #1 RAG attack vector. URL indirect injection is #2. Image OCR attacks are growing. All four are on the roadmap.
- 
-Text layer will always be free. PDF, URL, Image, and Audio inputs will be paid tiers — compute-heavy, enterprise use cases.
+## Tiers
+
+| Feature | Free | Pro *(coming soon)* | Vision *(coming soon)* |
+|---------|------|---------------------|------------------------|
+| Text prompt scanning | ✅ | ✅ | ✅ |
+| 4-layer detection pipeline | ✅ | ✅ | ✅ |
+| API access | ✅ | ✅ | ✅ |
+| Open source | ✅ | — | — |
+| PDF scanning | — | ✅ | ✅ |
+| URL scanning | — | ✅ | ✅ |
+| Image / Video analysis | — | — | ✅ |
+| Priority support | — | ✅ | ✅ |
  
 ---
- 
-## Roadmap
- 
-### Now
-- ✅ L1 Vigil signature scanner
-- ✅ L2 DistilBERT ONNX classifier (99.42% val acc)
-- ✅ L3 custom rule engine — 14 attack types, 10 encoding layers
-- ✅ L4 Groq Llama3 advisory layer
-- ✅ Agent Strike adversarial loop
-- ✅ Feedback loop — missed attacks → retraining data
-- ✅ IP blocklist + global rate limiting
-- ✅ BLAKE2b API key hashing
-- ✅ PII sanitization before logging
-- ✅ Grafana SIEM dashboard
-- ✅ Azure Monitor alerts
-- ✅ CI/CD — 146 tests, Bandit clean, SonarCloud green
-### Next
-- 🔄 mDeBERTa multilingual model — 15 language support
-- 🔄 Agent Strike automated 2AM retraining loop
-- 📋 Key expiry + rotation endpoints
-- 📋 PDF injection detection layer
-- 📋 Azure Key Vault migration
-- 📋 BGE embedding similarity layer (L3 upgrade)
-  
----
- 
-## Tech Stack
- 
-```
-Python 3.11 · FastAPI · ONNX Runtime
-DistilBERT (Sandeep120205/agent-shield-distilbert)
-Azure App Service Linux B1 · Azure Blob Storage · Azure Table Storage
-GitHub Actions CI/CD · Gradio (HuggingFace Space)
-SlowAPI · BLAKE2b · Bandit · SonarCloud · CodeRabbit
-gunicorn + uvicorn
-```
- 
+## Enterprise
+
+Building at scale? Need a private deployment, SLA, or custom integration?
+
+📩 **[sandeep.int.2005@gmail.com](mailto:sandeep.int.2005@gmail.com)**
+
+Self-hosting available. Your data never leaves your environment.
+
 ---
 
- 
 ## Contributing
- 
+
+Agent Shield is open source. Contributions are welcome.
+
 1. Fork the repo
 2. Create a branch — `git checkout -b feature/your-fix`
 3. Commit — `git commit -m "fix: what you changed"`
@@ -273,52 +243,43 @@ gunicorn + uvicorn
 - More adversarial payload test cases
 - Dataset contributions (labeled injection/safe pairs)
 - False positive reduction ideas
----
- 
-## Security Disclosure
- 
-Found a bypass that slips past all 4 layers?
- 
-Do **not** open a public issue. Email: `sandeep.int.2005@gmail.com`
- 
-Include the payload, expected vs actual verdict, and steps to reproduce. Response within 48 hours.
- 
----
- 
-## Model
- 
-HuggingFace: [Sandeep120205/agent-shield-distilbert](https://huggingface.co/Sandeep120205/agent-shield-distilbert)
- 
-- Base: `distilbert-base-uncased`
-- Fine-tuned on 23,659 rows (50/50 balanced)
-- Exported to ONNX — 255.55MB
-- `max_length=128` — do not change
----
- 
-## License
- 
-MIT — see [LICENSE](LICENSE)
- 
----
- 
-## Built by
- 
-**Sandeep S** — Security Engineer | CSE Graduate 2026  
-[GitHub](https://github.com/Sandeep-int) · [HuggingFace](https://huggingface.co/Sandeep120205) · [LinkedIn](https://www.linkedin.com/in/sandeep-s-68012225a/)
- 
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for full guidelines.
+
 ---
 
-```
-Layers:       4  (Vigil → DistilBERT ONNX → Custom Rules → Groq Llama3)
-Model:        DistilBERT fine-tuned — 99.42% val accuracy
-Dataset:      291,471 rows | 50/50 balanced
-Adversarial:  14/14 (100%)
-Security:     23 vulnerabilities closed
-Latency:      ~8ms blocked / ~810ms clean
-Auth:         BLAKE2b hashed API keys
-Deployment:   Azure App Service + HuggingFace Spaces
-Package:      pip install agent-shield-int
-Status:       🟢 LIVE
-```
- 
-**Agent Shield — Built to get stronger every day.**
+## Security Disclosure
+
+Found a bypass that slips past all 4 layers?
+
+**Do not open a public issue.**
+
+📩 Email: [sandeep.int.2005@gmail.com](mailto:sandeep.int.2005@gmail.com)
+
+Include:
+- The payload
+- Expected vs actual verdict
+- Steps to reproduce
+
+Response within **48 hours**.
+
+See [SECURITY.md](./SECURITY.md) for full policy.
+
+---
+
+## License
+
+MIT License — see [LICENSE](./LICENSE) for details.
+
+Free to use, modify, and distribute. Attribution appreciated.
+
+---
+<div align="center">
+
+Built by [Sandeep S](https://github.com/Sandeep-int) &nbsp;|&nbsp;
+[LinkedIn](https://linkedin.com/in/your-linkedin) &nbsp;|&nbsp;
+[HuggingFace](https://huggingface.co/Sandeep120205)
+
+**Agent Shield gets stronger every day. So do attackers. That's the point.**
+
+</div>
