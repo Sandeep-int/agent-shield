@@ -42,7 +42,6 @@ Every AI assistant and chatbot is a potential attack surface.
 ## The Solution
 Agent Shield is a **4-layer prompt injection detection API**
 
----
 
 ## How It Works
 
