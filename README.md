@@ -277,7 +277,7 @@ Free to use, modify, and distribute. Attribution appreciated.
 <div align="center">
 
 Built by [Sandeep S](https://github.com/Sandeep-int) &nbsp;|&nbsp;
-[LinkedIn](https://linkedin.com/in/your-linkedin) &nbsp;|&nbsp;
+[LinkedIn](https://www.linkedin.com/in/sandeep-int/) &nbsp;|&nbsp;
 [HuggingFace](https://huggingface.co/Sandeep120205)
 
 **Agent Shield gets stronger every day. So do attackers. That's the point.**
