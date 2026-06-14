@@ -24,7 +24,7 @@ print(f"Original: {triple}")
 # Let's try treating J as literal and UU2 as part of encoding
 # Actually,
 
- looking at the pattern: J-U-U-2-J-U-F-D...
+# looking at the pattern: J-U-U-2-J-U-F-D...
 # This might be: %U escapes OR literal text
 
 # Let me try hex decode of the string itself

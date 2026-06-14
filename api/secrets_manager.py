@@ -27,9 +27,9 @@ def get_secret(secret_name: str, default: str = "") -> str:
     Priority: Azure Key Vault > AWS Secrets Manager > Environment Variable
     """
     try:
-        if SECRET_BACKEND == "azure":
+        if SECRET_BACKEND == "azure":   # nosec B105 
             return _get_azure_secret(secret_name, default)
-        elif SECRET_BACKEND == "aws":
+        elif SECRET_BACKEND == "aws":   # nosec B105 
             return _get_aws_secret(secret_name, default)
         else:
             return os.environ.get(secret_name, default)
@@ -87,9 +87,9 @@ def rotate_secret(secret_name: str, new_value: str) -> bool:
     Returns True on success, False on failure
     """
     try:
-        if SECRET_BACKEND == "azure":
+        if SECRET_BACKEND == "azure": # nosec B105 
             return _rotate_azure_secret(secret_name, new_value)
-        elif SECRET_BACKEND == "aws":
+        elif SECRET_BACKEND == "aws": # nosec B105 
             return _rotate_aws_secret(secret_name, new_value)
         else:
             logger.warning(f"Secret rotation not supported for env backend")

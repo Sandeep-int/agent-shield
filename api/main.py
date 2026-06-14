@@ -24,6 +24,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from detectors.vigil_scanner import VigilScanner
 from detectors.l3_custom import CustomL3
 from detectors.l4_groq import GroqL4
+from detectors.l2_5_mdeberta import MDebertaL25
+
+
 from detectors.bert_classifier import MODEL_VERSION
 from api.auth import router as auth_router, validate_token
 from api.secrets_manager import get_secret
@@ -239,6 +242,9 @@ else:
 try:
     l3 = CustomL3()
     l4 = GroqL4()
+    l2_5 = MDebertaL25()
+
+
     logger.info("✓ L3: Custom Rules Engine loaded")
 except Exception as e:
     logger.critical(f"FATAL: L3 Custom Rules failed: {e}")
@@ -347,33 +353,54 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
                 details={"reason": f"L2 inference error — blocked by fail-safe policy: {str(e)[:100]}"}
             )
 
-    l3_result = l3.check(target_payload)
-    if not l3_result.get("passed"):
+        try:
+            l2_5_result = await asyncio.wait_for(
+                l2_5.check(target_payload),
+                timeout=10.0
+            )
+            if l2_5_result.get("is_injection"):
+                latency = (time.time() - start_time) * 1000
+                confidence = l2_5_result.get("confidence", 0.0)
+                log_to_azure(target_payload, "BLOCK", confidence, "L2_5_MDEBERTA", latency, client_ip)
+                return CheckResponse(
+                    verdict="BLOCK",
+                    confidence=confidence,
+                    layer_hit="L2_5_MDEBERTA",
+                    latency_ms=latency,
+                    details={"model_confidence": confidence}
+                )
+        except asyncio.TimeoutError:
+            logger.warning("L2.5 timeout — fail open, continuing to L3")
+        except Exception as e:
+            logger.exception(f"L2.5 error — fail open: {e}")
+
+        l3_result = l3.check(target_payload)
+        if not l3_result.get("passed"):
+            total_latency = (time.time() - start_time) * 1000
+            log_to_azure(target_payload, "BLOCK", 0.99, "L3_CUSTOM_RULES", total_latency, client_ip)
+            return CheckResponse(
+                verdict="BLOCK",
+                confidence=0.99,
+                layer_hit="L3_CUSTOM_RULES",
+                latency_ms=total_latency,
+                details={"reason": l3_result.get("reason")}
+            )
+
+        # L4 — Groq Llama3 reasoning (fire and forget — never blocks)
+        _l4_task = asyncio.ensure_future(l4.check(target_payload))
+        _l4_task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
+        l4_advisory = "L4_ADVISORY_ASYNC"
+
         total_latency = (time.time() - start_time) * 1000
-        log_to_azure(target_payload, "BLOCK", 0.99, "L3_CUSTOM_RULES", total_latency, client_ip)
+        log_to_azure(target_payload, "ALLOW", 0.00, "COMPREHENSIVE_PASS", total_latency, client_ip)
         return CheckResponse(
-            verdict="BLOCK",
-            confidence=0.99,
-            layer_hit="L3_CUSTOM_RULES",
+            verdict="ALLOW",
+            confidence=0.00,
+            layer_hit="COMPREHENSIVE_PASS",
             latency_ms=total_latency,
-            details={"reason": l3_result.get("reason")}
+            details={"all_checks": "verified_clean", "l4_advisory": l4_advisory},
+            model_version=MODEL_VERSION
         )
-
-    # L4 — Groq Llama3 reasoning (fire and forget — never blocks)
-    _l4_task = asyncio.ensure_future(l4.check(target_payload))
-    _l4_task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
-    l4_advisory = "L4_ADVISORY_ASYNC" 
-
-    total_latency = (time.time() - start_time) * 1000
-    log_to_azure(target_payload, "ALLOW", 0.00, "COMPREHENSIVE_PASS", total_latency, client_ip)
-    return CheckResponse(
-        verdict="ALLOW",
-        confidence=0.00,
-        layer_hit="COMPREHENSIVE_PASS",
-        latency_ms=total_latency,
-        details={"all_checks": "verified_clean", "l4_advisory": l4_advisory},
-        model_version=MODEL_VERSION
-    )
 
 @app.get("/health")
 async def health():
