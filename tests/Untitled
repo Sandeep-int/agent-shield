@@ -1,1 +1,0 @@
-@pytest.mark.xfail(reason="SlowAPI in-memory counter resets in CI")
