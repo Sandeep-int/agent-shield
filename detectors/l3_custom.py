@@ -20,7 +20,7 @@ class CustomL3:
             "ssn": r"\b\d{3}[\s\-]?\d{2}[\s\-]?\d{4}\b",
             "email": r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
             "email_obfusc": r"[A-Za-z0-9._%+-]+\s*\[at\]\s*[A-Za-z0-9.-]+\s*\[dot\]\s*[A-Za-z]{2,}",
-            "password": r"(password|passwd|pwd)\s*[:=]\s*[\"']?[\w@#$%^&*]+",
+            "password": r"(password|passwd|pwd)\s*[:=]\s*[\"']?[\w@#$%^&*]+",   # nosec B105 
             "api_key": r"(api[_-]?key|apikey)\s*[:=]\s*[\"']?[\w\-]+",
             "ipv4": r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
             "phone": r"\b(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b",

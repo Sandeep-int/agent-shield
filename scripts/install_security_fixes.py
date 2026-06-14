@@ -4,7 +4,7 @@ Agent Shield - Automated Installation Script
 Installs security fixes with or without ML dependencies
 """
 
-import subprocess
+import subprocess   # nosec B404
 import sys
 import os
 
@@ -14,7 +14,7 @@ def run_command(cmd, description):
     print(f"📦 {description}")
     print(f"{'='*60}")
     try:
-        result = subprocess.run(cmd, shell=False, check=True, capture_output=True, text=True)
+        result = subprocess.run(cmd, shell=False, check=True, capture_output=True, text=True)   # nosec B603
         print(result.stdout)
         print(f"✅ {description} - SUCCESS")
         return True

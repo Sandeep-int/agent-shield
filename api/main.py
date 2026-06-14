@@ -353,17 +353,26 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
                 details={"reason": f"L2 inference error — blocked by fail-safe policy: {str(e)[:100]}"}
             )
 
-    l2_5_result = await l2_5.check(target_payload)
+try:
+    l2_5_result = await asyncio.wait_for(
+        l2_5.check(target_payload),
+        timeout=10.0
+    )
     if l2_5_result.get("is_injection"):
         latency = (time.time() - start_time) * 1000
-        log_to_azure(target_payload, "BLOCK", l2_5_result["confidence"], "L2_5_MDEBERTA", latency, client_ip)
+        confidence = l2_5_result.get("confidence", 0.0)
+        log_to_azure(target_payload, "BLOCK", confidence, "L2_5_MDEBERTA", latency, client_ip)
         return CheckResponse(
             verdict="BLOCK",
-            confidence=l2_5_result["confidence"],
+            confidence=confidence,
             layer_hit="L2_5_MDEBERTA",
             latency_ms=latency,
-            details={"model_confidence": l2_5_result["confidence"]}
+            details={"model_confidence": confidence}
         )
+except asyncio.TimeoutError:
+    logger.warning("L2.5 timeout — fail open, continuing to L3")
+except Exception as e:
+    logger.error(f"L2.5 error — fail open: {e}")
 
     l3_result = l3.check(target_payload)
     if not l3_result.get("passed"):
