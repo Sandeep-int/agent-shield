@@ -24,6 +24,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from detectors.vigil_scanner import VigilScanner
 from detectors.l3_custom import CustomL3
 from detectors.l4_groq import GroqL4
+from detectors.l2_5_mdeberta import MDebertaL25
+
+
 from detectors.bert_classifier import MODEL_VERSION
 from api.auth import router as auth_router, validate_token
 from api.secrets_manager import get_secret
@@ -239,6 +242,9 @@ else:
 try:
     l3 = CustomL3()
     l4 = GroqL4()
+    l2_5 = MDebertaL25()
+
+
     logger.info("✓ L3: Custom Rules Engine loaded")
 except Exception as e:
     logger.critical(f"FATAL: L3 Custom Rules failed: {e}")
@@ -346,6 +352,18 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
                 latency_ms=latency,
                 details={"reason": f"L2 inference error — blocked by fail-safe policy: {str(e)[:100]}"}
             )
+
+    l2_5_result = await l2_5.check(target_payload)
+    if l2_5_result.get("is_injection"):
+        latency = (time.time() - start_time) * 1000
+        log_to_azure(target_payload, "BLOCK", l2_5_result["confidence"], "L2_5_MDEBERTA", latency, client_ip)
+        return CheckResponse(
+            verdict="BLOCK",
+            confidence=l2_5_result["confidence"],
+            layer_hit="L2_5_MDEBERTA",
+            latency_ms=latency,
+            details={"model_confidence": l2_5_result["confidence"]}
+        )
 
     l3_result = l3.check(target_payload)
     if not l3_result.get("passed"):
