@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class CustomL3:
+class CustomL4:
     def __init__(self):
         # PII Patterns - Optimized for performance
         self.patterns = {
