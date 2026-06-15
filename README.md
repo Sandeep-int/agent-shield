@@ -48,42 +48,30 @@ Agent Shield is a **4-layer prompt injection detection API**
 Every request passes through 4 layers in order. One failure = blocked. No exceptions.
 
 ```
-📥 Incoming Request
-    ↓  [URL decode + Unicode NFKC normalize]
-┌─────────────────────────────────────────────────┐
-│ L1 — Vigil Signature Scanner          (~8ms)    │
-│ • 1000+ regex patterns                          │
-│ • Known jailbreak strings                       │
-│ • Common injection formats                      │
-└─────────────────────────────────────────────────┘
-    ↓ (not caught)
-┌─────────────────────────────────────────────────┐
-│ L2 — ONNX DistilBERT Classifier      (~600ms)   │
-│ • Trained on 291,471 rows (50/50 balanced)      │
-│ • Val accuracy: 99.42% | F1: 99.42%             │
-│ • Confidence threshold: 0.85                    │
-│ • 10s timeout → BLOCK (fail-closed)             │
-└─────────────────────────────────────────────────┘
-    ↓ (not caught)
-┌─────────────────────────────────────────────────┐
-│ L3 — Custom Rule Engine              (~2ms)     │
-│ • 458 lines, 14 attack types                    │
-│ • Recursive Base64 decode (depth 10)            │
-│ • ROT13, leetspeak, reversed text               │
-│ • Homoglyph map (Cyrillic/Greek/Math)           │
-│ • 11 PII patterns, 20 toxic words               │
-│ • 25+ injection patterns                        │
-└─────────────────────────────────────────────────┘
-    ↓ (not caught)
-┌─────────────────────────────────────────────────┐
-│ L4 — Groq Llama3-70B Reasoning      (~200ms)    │
-│ • Social engineering detection                  │
-│ • Adversarial suffix detection                  │
-│ • Fail-closed on timeout or parse error         │
-│ • Thread-safe cache via asyncio.Lock            │
-└─────────────────────────────────────────────────┘
-    ↓
-✅ sanitize_prompt() → log to Azure Table → ALLOW
+Incoming prompt
+       │
+       ▼
+ ┌─────────────────────────────────────────────────────────┐
+ │  UTF-8 Validation          → reject malformed input     │
+ │  IP Blocklist (Azure)      → 403 if known bad actor     │
+ │  Rate Limit (120/min)      → 429 on abuse               │
+ │  Auth BLAKE2b compare      → 401 on bad key             │
+ └─────────────────────────────────────────────────────────┘
+       │
+       ▼
+  L1  Vigil Signatures    ~8ms    ──→ BLOCK on match
+       │ PASS
+       ▼
+  L2  DistilBERT ONNX     ~514ms  ──→ BLOCK · timeout → BLOCK
+       │ PASS
+       ▼
+  L3  Custom Rule Engine  ~2ms    ──→ BLOCK on match
+       │ PASS
+       ▼
+  L4  Groq Llama3-70b     ~200ms  ──→ advisory (fire-and-forget)
+       │
+       ▼
+  sanitize_prompt() → Azure Table log → ✅ ALLOW
 ```
 
 Any layer can terminate the request with a `BLOCK` verdict. The attack type and layer are logged to Azure Table for SIEM analysis.
@@ -132,7 +120,7 @@ Anyone can train a classifier. **No one else has an adversarial red-team bot att
 
 > Real traffic. Real attacks. Live dashboard.
 
-🔗 [View Live SIEM Dashboard →](https://sandeepint.grafana.net/d/agent-shield-siem/agent-shield)
+![Grafana Dashboard](assets/Dashboard.png)
 
 | Metric | Value |
 |--------|-------|
@@ -141,6 +129,8 @@ Anyone can train a classifier. **No one else has an adversarial red-team bot att
 | Allowed | 229 |
 | Block Rate | 67% |
 | Avg Latency | ~741ms |
+
+🔗 [View Live SIEM Dashboard →](https://sandeepint.grafana.net/d/agent-shield-siem/agent-shield)
 
 ---
 
