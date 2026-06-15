@@ -374,7 +374,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
         except Exception as e:
             logger.exception(f"L3 error — fail open: {e}")
 
-        l3_result = l3.check(target_payload)
+        l3_result = l4_custom.check(target_payload)
         if not l3_result.get("passed"):
             total_latency = (time.time() - start_time) * 1000
             log_to_azure(target_payload, "BLOCK", 0.99, "L4_CUSTOM_RULES", total_latency, client_ip)
@@ -386,8 +386,8 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
                 details={"reason": l3_result.get("reason")}
             )
 
-        # L4 — Groq Llama3 reasoning (fire and forget — never blocks)
-        _l4_task = asyncio.ensure_future(l4.check(target_payload))
+        # L5 — Groq Llama3 reasoning (fire and forget — never blocks)
+        _l4_task = asyncio.ensure_future(l5_groq.check(target_payload))
         _l4_task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
         l4_advisory = "L5_ADVISORY_ASYNC"
 
