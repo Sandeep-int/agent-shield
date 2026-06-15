@@ -2,9 +2,9 @@ import sys
 import re
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from detectors.l3_custom import CustomL3
+from detectors.l4_custom import CustomL4
 
-detector = CustomL3()
+detector = CustomL4()
 
 prompts = [
     "Use kill command to stop process",

@@ -11,10 +11,10 @@ sys.path.insert(0, 'agent-shield')
 if os.name == 'nt':
     os.system('chcp 65001 >nul')
 
-from detectors.l3_custom import CustomL3
+from detectors.l4_custom import CustomL4
 
 def run_manual_tests():
-    detector = CustomL3()
+    detector = CustomL4()
     
     print("=" * 80)
     print("L3 CUSTOM DETECTOR - MANUAL BATCH TEST")

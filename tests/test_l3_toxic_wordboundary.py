@@ -15,12 +15,12 @@ EXPECTED BEHAVIOR AFTER \b FIX:
 """
 
 import pytest
-from detectors.l3_custom import CustomL3
+from detectors.l4_custom import CustomL4
 
 
 @pytest.fixture(scope="module")
 def l3_detector():
-    return CustomL3()
+    return CustomL4()
 
 
 # ============================================================================

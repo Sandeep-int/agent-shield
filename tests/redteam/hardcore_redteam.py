@@ -14,7 +14,7 @@ sys.path.insert(0, 'agent-shield')
 if os.name == 'nt':
     os.system('chcp 65001 >nul 2>&1')
 
-from detectors.l3_custom import CustomL3
+from detectors.l4_custom import CustomL4
 
 
 def encode_url(text):
@@ -38,7 +38,7 @@ def encode_double_base64(text):
 
 
 def run_hardcore_redteam():
-    detector = CustomL3()
+    detector = CustomL4()
     
     print("=" * 90)
     print("HARDCORE RED TEAM PENETRATION TEST - REAL ATTACK PAYLOADS")

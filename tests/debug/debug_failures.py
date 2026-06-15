@@ -4,9 +4,9 @@ import base64
 import urllib.parse
 sys.path.insert(0, 'agent-shield')
 
-from detectors.l3_custom import CustomL3
+from detectors.l4_custom import CustomL4
 
-detector = CustomL3()
+detector = CustomL4()
 
 # Test cases that FAILED
 failed_tests = [
