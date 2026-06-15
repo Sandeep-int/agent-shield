@@ -5,10 +5,10 @@ import os
 sys.path.insert(0, 'agent-shield')
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 
-from detectors.l3_custom import CustomL3
+from detectors.l4_custom import CustomL4
 
 def test_detector():
-    detector = CustomL3()
+    detector = CustomL4()
     
     # Test cases
     tests = [

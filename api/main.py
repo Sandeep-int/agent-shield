@@ -22,9 +22,9 @@ from slowapi.middleware import SlowAPIMiddleware
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from detectors.vigil_scanner import VigilScanner
-from detectors.l3_custom import CustomL3
-from detectors.l4_groq import GroqL4
-from detectors.l2_5_mdeberta import MDebertaL25
+from detectors.l4_custom import CustomL4
+from detectors.l5_groq import GroqL5
+from detectors.l3_mdeberta import MDebertaL3
 
 
 from detectors.bert_classifier import MODEL_VERSION
@@ -231,18 +231,18 @@ if BERT_AVAILABLE:
         logger.info("✓ L2: BERT Classifier loaded")
     except Exception as e:
         logger.warning(f"⚠ L2 BERT Classifier failed to initialize: {e}")
-        logger.warning("⚠ Running without ML detection layer (L1 and L3 still active)")
+        logger.warning("⚠ Running without ML detection layer (L1 and L4 still active)")
         BERT_AVAILABLE = False
         classifier = None
 else:
     logger.warning("⚠ L2 BERT dependencies not installed (numpy, torch, transformers)")
-    logger.warning("⚠ Running without ML detection layer (L1 and L3 still active)")
+    logger.warning("⚠ Running without ML detection layer (L1 and L4 still active)")
     classifier = None
 
 try:
-    l3 = CustomL3()
-    l4 = GroqL4()
-    l2_5 = MDebertaL25()
+    l4_custom = CustomL4()
+    l5_groq = GroqL5()
+    l3_mdeberta = MDebertaL3()
 
 
     logger.info("✓ L3: Custom Rules Engine loaded")
@@ -251,9 +251,9 @@ except Exception as e:
     raise
 
 if BERT_AVAILABLE:
-    logger.info("═══ Security Engine Ready: L1 (Vigil) + L2 (BERT) + L3 (Custom) ═══")
+    logger.info("═══ Security Engine Ready: L1 (Vigil) + L2 (BERT) + L3 (mDeBERTa) + L4 (Custom) ═══")
 else:
-    logger.info("═══ Security Engine Ready: L1 (Vigil) + L3 (Custom) - L2 disabled ═══")
+    logger.info("═══ Security Engine Ready: L1 (Vigil) + L3 (mDeBERTa) + L4 (Custom) - L2 disabled ═══")
 
 class CheckRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=2000)
@@ -354,42 +354,42 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
             )
 
         try:
-            l2_5_result = await asyncio.wait_for(
-                l2_5.check(target_payload),
+            l3_mdeberta_result = await asyncio.wait_for(
+                l3_mdeberta.check(target_payload),
                 timeout=10.0
             )
-            if l2_5_result.get("is_injection"):
+            if l3_mdeberta_result.get("is_injection"):
                 latency = (time.time() - start_time) * 1000
-                confidence = l2_5_result.get("confidence", 0.0)
-                log_to_azure(target_payload, "BLOCK", confidence, "L2_5_MDEBERTA", latency, client_ip)
+                confidence = l3_mdeberta_result.get("confidence", 0.0)
+                log_to_azure(target_payload, "BLOCK", confidence, "L3_MDEBERTA", latency, client_ip)
                 return CheckResponse(
                     verdict="BLOCK",
                     confidence=confidence,
-                    layer_hit="L2_5_MDEBERTA",
+                    layer_hit="L3_MDEBERTA",
                     latency_ms=latency,
                     details={"model_confidence": confidence}
                 )
         except asyncio.TimeoutError:
-            logger.warning("L2.5 timeout — fail open, continuing to L3")
+            logger.warning("L3 timeout — fail open, continuing to L4")
         except Exception as e:
-            logger.exception(f"L2.5 error — fail open: {e}")
+            logger.exception(f"L3 error — fail open: {e}")
 
-        l3_result = l3.check(target_payload)
+        l3_result = l4_custom.check(target_payload)
         if not l3_result.get("passed"):
             total_latency = (time.time() - start_time) * 1000
-            log_to_azure(target_payload, "BLOCK", 0.99, "L3_CUSTOM_RULES", total_latency, client_ip)
+            log_to_azure(target_payload, "BLOCK", 0.99, "L4_CUSTOM_RULES", total_latency, client_ip)
             return CheckResponse(
                 verdict="BLOCK",
                 confidence=0.99,
-                layer_hit="L3_CUSTOM_RULES",
+                layer_hit="L4_CUSTOM_RULES",
                 latency_ms=total_latency,
                 details={"reason": l3_result.get("reason")}
             )
 
-        # L4 — Groq Llama3 reasoning (fire and forget — never blocks)
-        _l4_task = asyncio.ensure_future(l4.check(target_payload))
+        # L5 — Groq Llama3 reasoning (fire and forget — never blocks)
+        _l4_task = asyncio.ensure_future(l5_groq.check(target_payload))
         _l4_task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
-        l4_advisory = "L4_ADVISORY_ASYNC"
+        l4_advisory = "L5_ADVISORY_ASYNC"
 
         total_latency = (time.time() - start_time) * 1000
         log_to_azure(target_payload, "ALLOW", 0.00, "COMPREHENSIVE_PASS", total_latency, client_ip)

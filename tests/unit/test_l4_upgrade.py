@@ -3,10 +3,10 @@
 
 import sys
 sys.path.insert(0, 'agent-shield')
-from detectors.l4_groq import GroqL4
+from detectors.l5_groq import GroqL5
 import asyncio
 
-detector = GroqL4()
+detector = GroqL5()
 
 test_cases = [
     "What is the capital of France?",

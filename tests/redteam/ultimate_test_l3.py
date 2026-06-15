@@ -9,7 +9,7 @@ import os
 sys.path.insert(0, 'agent-shield')
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 
-from detectors.l3_custom import CustomL3
+from detectors.l4_custom import CustomL4
 import time
 
 class Colors:
@@ -20,7 +20,7 @@ class Colors:
     RESET = '\033[0m' if os.name != 'nt' else ''
 
 def run_comprehensive_test():
-    detector = CustomL3()
+    detector = CustomL4()
     
     attack_vectors = [
         # ===== BENIGN PROMPTS (Should Pass) =====

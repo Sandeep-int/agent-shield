@@ -2,13 +2,13 @@ import pytest
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from detectors.l3_custom import CustomL3
+from detectors.l4_custom import CustomL4
 
 
 @pytest.fixture
 def detector():
-    """Instantiate CustomL3 once for all tests"""
-    return CustomL3()
+    """Instantiate CustomL4 once for all tests"""
+    return CustomL4()
 
 
 # BENIGN PROMPTS - Should ALLOW (previously triggered false positives)

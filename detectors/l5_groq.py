@@ -52,7 +52,7 @@ Output: {"verdict": "SAFE", "category": "SAFE", "confidence": 0.90}
 Respond with valid JSON only:
 {"verdict": "INJECTION" or "SAFE", "category": "<category>", "confidence": 0.0-1.0}"""
 
-class GroqL4:
+class GroqL5:
     def __init__(self):
         self.api_key = os.environ.get("GROQ_API_KEY")
         self.enabled = bool(self.api_key)
