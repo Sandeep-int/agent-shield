@@ -100,22 +100,10 @@ Agent Shield ships with an adversarial red-team engine called **Agent Strike**.
  
 Agent Strike generates hard attacks — base64, homoglyphs, multilingual, semantic obfuscation — and fires them at Agent Shield daily. Every attack that gets through becomes labelled training data. That data retrains the model. The model gets stronger. Agent Strike generates harder attacks.
 
- 
-```
-Agent Strike generates attacks
-        ↓
-Fires at Agent Shield
-        ↓
-Misses logged → Azure Table → CSV dataset
-        ↓
-Miss rate > 5% → triggers retraining on Kaggle T4
-        ↓
-New ONNX model → Azure Blob → live in production
-        ↓
-Agent Strike generates harder attacks
-        ↓
-Loop forever
-```
+<p align="center">
+  <img src="assets/Agent Strike Loop.png " alt="Agent Shield">
+</p>
+
 Anyone can train a classifier. **No one else has an adversarial red-team bot attacking their own API every night.**
 
 ---
