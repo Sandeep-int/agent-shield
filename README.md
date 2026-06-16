@@ -4,11 +4,9 @@
 
 ---
 
-**Agent Shield catches prompt injection attacks before they reach your LLM.**
- 
-Open source · Self-hosted · Multi-Layer Defence · Built to Fail-Safe · 100% Private.  
-Your data never leaves your environment.
+**Open source prompt injection firewall for production AI systems.**
 
+Open source · Production-grade · Self-hosted · 100% Private
 
 <div align="center">
 
@@ -17,7 +15,7 @@ Your data never leaves your environment.
 [![Metrics](https://img.shields.io/badge/Metrics-/metrics-4A90D9?style=for-the-badge)](https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net/metrics)
 
 [![PyPI](https://img.shields.io/badge/PyPI-agent--shield--int-3775A9?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/agent-shield-int/)
-[![Grafana SIEM](https://img.shields.io/badge/Grafana-SIEM%20Dashboard-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://sandeepint.grafana.net/d/agent-shield-siem/agent-shield)
+[![CI](https://img.shields.io/github/actions/workflow/status/Sandeep-int/agent-shield/security-gate.yml?style=for-the-badge&logo=github&label=CI%20%7C%20146%20Tests&color=22c55e)](https://github.com/Sandeep-int/agent-shield/actions/workflows/security-gate.yml)
 [![SonarCloud](https://img.shields.io/badge/SonarCloud-Quality%20Gate%20✓-4E9BCD?style=for-the-badge&logo=sonarcloud&logoColor=white)](https://sonarcloud.io/project/overview?id=Sandeep-int_agent-shield)
 
 [![HF Space UI](https://img.shields.io/badge/🤗%20Demo%20UI-HuggingFace-FF9A00?style=for-the-badge&logoColor=white)](https://huggingface.co/spaces/Sandeep120205/agent-shield)
@@ -57,14 +55,14 @@ flowchart TD
     end
 
     B --> L1[L1 · Vigil Signatures · ~8ms]
-    L1 -->| match | BL1([BLOCK · L1_SIGNATURE])
-    L1 -->| pass | L2[L2 · DistilBERT ONNX · ~514ms]
-    L2 -->| match or timeout | BL2([BLOCK · L2_ONNX / TIMEOUT])
-    L2 -->| pass | L3[L3 · mDeBERTa HF Space · ~300ms]
-    L3 -->| match | BL3([BLOCK · L3_MDEBERTA])
-    L3 -->| pass or timeout | L4[L4 · Custom Rule Engine · ~2ms]
-    L4 -->| match | BL4([BLOCK · L4_CUSTOM_RULE])
-    L4 -->| pass | L5[L5 · Groq Llama3-70b · ~200ms]
+    L1 -->|match| BL1([BLOCK · L1_SIGNATURE])
+    L1 -->|pass| L2[L2 · DistilBERT ONNX · ~514ms]
+    L2 -->|match or timeout| BL2([BLOCK · L2_ONNX / TIMEOUT])
+    L2 -->|pass| L3[L3 · mDeBERTa HF Space · ~300ms]
+    L3 -->|match| BL3([BLOCK · L3_MDEBERTA])
+    L3 -->|pass or timeout| L4[L4 · Custom Rule Engine · ~2ms]
+    L4 -->|match| BL4([BLOCK · L4_CUSTOM_RULE])
+    L4 -->|pass| L5[L5 · Groq Llama3-70b · ~200ms]
     L5 -. advisory .-> ADV([Log only · never blocks])
     L5 --> SAN[sanitize_prompt · PII stripped]
     SAN --> LOG[Azure Table log]
@@ -87,11 +85,11 @@ Any layer can terminate the request with a `BLOCK` verdict. The attack type and 
 
 ---
 
-## Deployment Architecture & Component Matrix
+## Deployment Architecture
 
 <div align="center">
   
-The table below maps out the execution boundary and strict source-file accountability for every inspection tier within the gateway pipeline:
+Where each layer runs and why:
 
 | Layer | Security Model | Execution Environment / Host |
 | :--- | :--- | :--- |
@@ -113,23 +111,23 @@ The table below maps out the execution boundary and strict source-file accountab
 Agent Shield integrates directly with an automated testing and red-teaming pipeline called Agent Strike.
 
 <p align="center">
-  <img src="assets/Agent Strike Loop.png " alt="Agent Shield">
+  <img src="assets/Agent Strike Loop.png" alt="Agent Shield">
 </p>
 
 ---
 ### Continuous Validation: The Agent Strike Loop
 
-1. **Automated Testing:** Agent Strike acts as a persistent red-team engine, firing mutated, multi-vector attacks (Base64 variants, homoglyphs, multilingual patterns) at the API.
-2. **Anomaly Capture:** Successful firewall bypasses are immediately flagged by the logging telemetry and isolated into a secure data cache.
-3. **Autonomous Upgrades:** Once the bypass dataset hits a designated volume threshold, a lightweight webhook triggers headless cloud compute to fine-tune the core classifiers.
-4. **Hot-Reload Deployments:** Upgraded model weights are written back to the registry hub and dynamically hot-reloaded into gateway memory with zero server downtime.
+1. **Automated Red-Teaming:** Agent Strike fires mutated multi-vector attacks — Base64 variants, homoglyphs, multilingual patterns — at the live API using internal keys with no rate limit.
+2. **Miss Capture:** Bypasses are flagged via Azure Table telemetry and written to Azure Blob as a labeled dataset.
+3. **Automated Retraining:** When the miss rate exceeds 5%, a Kaggle T4x2 job fine-tunes the mDeBERTa classifier on the new bypass dataset.
+4. **Model Deployment:** Updated ONNX weights are pushed to Azure Blob. Azure App Service restarts and loads the new model on startup.
 
 ---
 
 ### Core Security Capabilities
 
-- **Multi-Scheme Decoders (L3):** Recursively unpacks complex token transformations—including Base64 (up to depth 10), ROT13, Leetspeak, URL encoding, Hex representations, and character-swapped homoglyphs—prior to running vector analysis.
-- **Data Isolation:** Fully containerized architecture designed for self-hosted edge deployments to guarantee complete data privacy.
+- **Multi-Scheme Decoders (L4):** Recursively unpacks Base64 (depth 10), ROT13, Leetspeak, URL encoding, Hex, and homoglyphs (Cyrillic/Greek/Fullwidth) before rule matching.
+- **Data Isolation:** Deployable as a container via the included Dockerfile. Self-hosted deployments keep all prompt data within your own environment.
 - **Cryptographic Auth:** Uses one-way `BLAKE2b` hashing for API keys to eliminate clear-text credentials within your data layer.
 - **Static Hardening:** Zero High or Medium vulnerabilities confirmed via automated static analysis (SAST) dependency scanning.
 ---
@@ -170,7 +168,9 @@ These metrics validate our classification limits, dataset baseline scales, and p
 | :--- | :--- |
 | **Validation Accuracy** | 99.42% |
 | **Active Training Dataset Volume** | 291,471 rows |
-| **Adversarial Evaluation Passing** | 14 / 14 Matrix Matches |
+| **Agent Strike True Positive Rate** | 96% (48 / 50) |
+| **Agent Strike False Positive Rate** | 4% (1 / 25) |
+| **Agent Strike False Negative Rate** | 4% (2 / 50) |
 | **Total Automated Regression Tests Passing** | 146 Tests |
 | **Maximum Target Gateway Latency Boundary** | < 750ms (Azure B1 Infrastructure) |
 | **Automated Static Security Audit Findings** | 0 High · 0 Medium (Bandit Hardened) |
@@ -237,7 +237,7 @@ curl -X POST https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net
 | Input / Target Type | Current Development Status |
 | :--- | :--- |
 | 📝 **Text Strings / Prompt Injection** | 🟢 **Production Ready (Open Source)** |
-| 📄 **Document / PDF Scans** | 🟡 In Development (Open Source) |
+| 📄 **Document / PDF Scans** | 🔵 Backlog Target |
 | 🌐 **Dynamic Web URL Crawling** | 🔵 Backlog Target |
 | 🖼️ **Image OCR Multi-modal Extraction** | 🔵 Backlog Target |
 | 🎥 **Video Stream Content Analysis** | 🔵 Backlog Target |
