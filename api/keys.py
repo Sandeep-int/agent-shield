@@ -7,11 +7,8 @@ Routes:
 """
 import hashlib
 import logging
-<<<<<<< HEAD
 import os
-=======
 import secrets
->>>>>>> c4f68bb (fix: expiry check, get_secret, atomic rotate via ETag)
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
