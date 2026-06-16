@@ -7,6 +7,7 @@ Routes:
 """
 import hashlib
 import logging
+import os
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
@@ -25,7 +26,14 @@ def _get_table():
 
 
 def _hash(token: str) -> str:
-    return hashlib.blake2b(token.encode(), digest_size=32).hexdigest()
+    pepper = os.environ.get("TOKEN_HASH_PEPPER", "agentshield-default-pepper")
+    derived = hashlib.pbkdf2_hmac(
+        "sha256",
+        token.encode("utf-8"),
+        pepper.encode("utf-8"),
+        310000,
+    )
+    return derived.hex()
 
 
 def _get_entity(token: str):
