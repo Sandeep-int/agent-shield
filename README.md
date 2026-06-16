@@ -9,22 +9,19 @@
 Open source. Self-hosted. Production-grade.  
 Your data never leaves your environment.
 
-[![API Status](https://img.shields.io/badge/API-Live-success?style=flat-square)](https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net/health)
-[![HF Space](https://img.shields.io/badge/HF%20Space-Active-blue?style=flat-square&logo=huggingface)](https://huggingface.co/spaces/Sandeep120205/agent-shield)
-[![PyPI](https://img.shields.io/badge/PyPI-agent--shield--int-orange?style=flat-square&logo=pypi)](https://pypi.org/project/agent-shield-int/)
-[![CI](https://img.shields.io/badge/CI-146%20tests%20passing-brightgreen?style=flat-square)](https://github.com/Sandeep-int/agent-shield/actions)
-[![Bandit](https://img.shields.io/badge/Bandit-0%20High%200%20Medium-brightgreen?style=flat-square)](https://github.com/Sandeep-int/agent-shield/actions)
-[![SonarCloud](https://img.shields.io/badge/SonarCloud-Quality%20Gate%20Passed-brightgreen?style=flat-square)](https://sonarcloud.io/project/overview?id=Sandeep-int_agent-shield)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
- 
----
+<div align="center">
 
-[Live API](https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net) &nbsp;|&nbsp;
-[Demo UI](https://huggingface.co/spaces/Sandeep120205/agent-shield) &nbsp;|&nbsp;
-[PyPI](https://pypi.org/project/agent-shield-int/) &nbsp;|&nbsp;
-[Model](https://huggingface.co/Sandeep120205/agent-shield-distilbert) &nbsp;|&nbsp;
-[SIEM Dashboard](https://sandeepint.grafana.net/d/agent-shield-siem/agent-shield) &nbsp;|&nbsp;
-[Docs](#quick-start)
+[![Live API](https://img.shields.io/badge/🔴%20Live%20API-Azure-0078D4?style=for-the-badge&logoColor=white)](https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net)
+[![Health](https://img.shields.io/badge/Health-/health-22c55e?style=for-the-badge)](https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net/health)
+[![Metrics](https://img.shields.io/badge/Metrics-/metrics-4A90D9?style=for-the-badge)](https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net/metrics)
+
+[![PyPI](https://img.shields.io/badge/PyPI-agent--shield--int-3775A9?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/agent-shield-int/)
+[![Grafana SIEM](https://img.shields.io/badge/Grafana-SIEM%20Dashboard-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://sandeepint.grafana.net/d/agent-shield-siem/agent-shield)
+[![SonarCloud](https://img.shields.io/badge/SonarCloud-Quality%20Gate%20✓-4E9BCD?style=for-the-badge&logo=sonarcloud&logoColor=white)](https://sonarcloud.io/project/overview?id=Sandeep-int_agent-shield)
+
+[![HF Space UI](https://img.shields.io/badge/🤗%20Demo%20UI-HuggingFace-FF9A00?style=for-the-badge&logoColor=white)](https://huggingface.co/spaces/Sandeep120205/agent-shield)
+[![DistilBERT Model](https://img.shields.io/badge/🤗%20DistilBERT%20Model-HuggingFace-FF9A00?style=for-the-badge&logoColor=white)](https://huggingface.co/Sandeep120205/agent-shield-distilbert)
+[![mDeBERTa Model](https://img.shields.io/badge/🤗%20mDeBERTa%20Model-HuggingFace-FF9A00?style=for-the-badge&logoColor=white)](https://huggingface.co/Sandeep120205/agent-shield-mdeberta)
 
 </div>
 
@@ -111,7 +108,7 @@ Anyone can train a classifier. **No one else has an adversarial red-team bot att
 
 - **Encoding-aware L3 engine** — decodes Base64 (recursive, depth 10), ROT13, Leetspeak, Cyrillic/Greek/Math homoglyphs, URL-encoded, hex, and reversed text                                        before analysis. Catches attacks the ML model never sees.
 - **Self-hostable** — your prompts never leave your environment
-- **Fail-closed design** — timeout = BLOCK. Parse error = BLOCK. Never silently allow.
+- **Fail-secure design** — L2 timeout = BLOCK. External layers (L3, L5) fail-open to preserve availability.
 - **BLAKE2b API key hashing** — keys are never stored in plain text
 - **23 security loopholes closed** — Bandit scan: 0 High, 0 Medium
 ---
@@ -130,7 +127,7 @@ Anyone can train a classifier. **No one else has an adversarial red-team bot att
 | Block Rate | 67% |
 | Avg Latency | ~741ms |
 
-🔗 [View Live SIEM Dashboard →](https://sandeepint.grafana.net/d/agent-shield-siem/agent-shield)
+[![Grafana SIEM](https://img.shields.io/badge/Grafana-SIEM%20Dashboard-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://sandeepint.grafana.net/d/agent-shield-siem/agent-shield)
 
 ---
 
@@ -191,24 +188,27 @@ curl -X POST https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net
 ```
 
 **Or try the live demo — no setup needed**
-👉 [https://huggingface.co/spaces/Sandeep120205/agent-shield](https://huggingface.co/spaces/Sandeep120205/agent-shield)
+
+ [![HF Space UI](https://img.shields.io/badge/🤗%20Demo%20UI-HuggingFace-FF9A00?style=for-the-badge&logoColor=white)](https://huggingface.co/spaces/Sandeep120205/agent-shield)
 
 ---
 
-## Tiers
+### Tiers — What's Free, What's Paid
 
-| Feature | Free | Pro *(coming soon)* | Vision *(coming soon)* |
-|---------|------|---------------------|------------------------|
-| Text prompt scanning | ✅ | ✅ | ✅ |
-| 4-layer detection pipeline | ✅ | ✅ | ✅ |
-| API access | ✅ | ✅ | ✅ |
-| Open source | ✅ | — | — |
-| PDF scanning | — | ✅ | ✅ |
-| URL scanning | — | ✅ | ✅ |
-| Image / Video analysis | — | — | ✅ |
-| Priority support | — | ✅ | ✅ |
- 
+<div align="center">
+
+| Input Type | Tier | 
+|------------|------|
+| 📝 **Text / Prompt injection** | 🟢 **FREE — Open Source** 
+| 📄 **PDF Analysis** | 🔒 **FREE — Open Source** (coming)
+| 🌐 **URL / Webpage scan** | 🔒 Paid (coming)
+| 🖼️ **Image OCR scan** | 🔒 Paid (coming)
+| 🎥 **Video Analysis** | 🔒 Paid (coming) 
+
+</div>
+
 ---
+  
 ## Enterprise
 
 Building at scale? Need a private deployment, SLA, or custom integration?
