@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent-shield-int"
-version = "1.0.4"
-description = "LLM Prompt Injection Detection CLI — 3-layer detection (Vigil + DistilBERT ONNX + Rules)"
+version = "1.0.5"
+description="LLM Prompt Injection Detection API — 5-layer detection (Vigil + DistilBERT + mDeBERTa + Rules + Groq)"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.9"
