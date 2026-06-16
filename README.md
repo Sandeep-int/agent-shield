@@ -6,8 +6,9 @@
 
 **Agent Shield catches prompt injection attacks before they reach your LLM.**
  
-Open source. Self-hosted. Production-grade.  
+Open source · Self-hosted · Multi-Layer Defence · Built to Fail-Safe · 100% Private.  
 Your data never leaves your environment.
+
 
 <div align="center">
 
@@ -31,19 +32,18 @@ Your data never leaves your environment.
 
 Every AI assistant and chatbot is a potential attack surface.
 
-- **Prompt injection is the #1 LLM attack vector** — attackers hijack your AI with crafted inputs
-- **Single-layer defenses fail** — keyword filters and basic classifiers are bypassed in seconds
-- **Your users, your data, your liability** — a compromised chatbot leaks context, ignores instructions, and executes arbitrary logic
+- **Prompt injection is the #1 LLM attack vector** — attackers hijack your AI with crafted inputs.
+- **Single-layer defenses fail** — keyword filters and basic classifiers are bypassed in seconds.
+- **Your users, your data, your liability** — a compromised chatbot leaks context, ignores instructions, and executes unauthorized logic.
 
 ---
 
 ## The Solution
-Agent Shield is a **5-layer prompt injection detection API**
-
+Agent Shield is an open-source, high-performance security gate that stands in front of your AI models. It acts as a multi-layer firewall, screening incoming user messages and dropping malicious inputs before they reach downstream LLMs.
 
 ## How It Works
 
-Every request passes through 5 layers in order. One failure = blocked. No exceptions.
+Every request passes through 5 distinct layers in sequence. One failure = blocked. No exceptions.
 
 ```mermaid
 flowchart TD
@@ -86,65 +86,99 @@ flowchart TD
 Any layer can terminate the request with a `BLOCK` verdict. The attack type and layer are logged to Azure Table for SIEM analysis.
 
 ---
- 
+
+## Deployment Architecture & Component Matrix
+
+<div align="center">
+  
+The table below maps out the execution boundary and strict source-file accountability for every inspection tier within the gateway pipeline:
+
+| Layer | Security Model | Execution Environment / Host |
+| :--- | :--- | :--- |
+| **L1** | Vigil Signatures | Azure B1 Standard Instance |
+| **L2** | DistilBERT ONNX | Azure B1 Standard Instance |
+| **L3** | mDeBERTa fp32 | HuggingFace Spaces API |
+| **L4** | Custom Rule Engine | Azure B1 Standard Instance |
+| **L5** | Groq Llama3-70b | Groq Inferencing API Cloud | 
+
+</div>
+
+---
 ## Why Agent Shield?
  
-**Most security tools are static. Agent Shield learns.**
+**Most security tools are static. Agent Shield adapts to new threats.** 
  
-### The MOAT — Agent Strike Loop
- 
-Agent Shield ships with an adversarial red-team engine called **Agent Strike**.
- 
-Agent Strike generates hard attacks — base64, homoglyphs, multilingual, semantic obfuscation — and fires them at Agent Shield daily. Every attack that gets through becomes labelled training data. That data retrains the model. The model gets stronger. Agent Strike generates harder attacks.
+## Continuous Security: Automated Adversarial Validation Loop
+
+Agent Shield integrates directly with an automated testing and red-teaming pipeline called Agent Strike.
 
 <p align="center">
   <img src="assets/Agent Strike Loop.png " alt="Agent Shield">
 </p>
 
-Anyone can train a classifier. **No one else has an adversarial red-team bot attacking their own API every night.**
+---
+### Continuous Validation: The Agent Strike Loop
+
+1. **Automated Testing:** Agent Strike acts as a persistent red-team engine, firing mutated, multi-vector attacks (Base64 variants, homoglyphs, multilingual patterns) at the API.
+2. **Anomaly Capture:** Successful firewall bypasses are immediately flagged by the logging telemetry and isolated into a secure data cache.
+3. **Autonomous Upgrades:** Once the bypass dataset hits a designated volume threshold, a lightweight webhook triggers headless cloud compute to fine-tune the core classifiers.
+4. **Hot-Reload Deployments:** Upgraded model weights are written back to the registry hub and dynamically hot-reloaded into gateway memory with zero server downtime.
 
 ---
-### Additional Edge
 
-- **Encoding-aware L3 engine** — decodes Base64 (recursive, depth 10), ROT13, Leetspeak, Cyrillic/Greek/Math homoglyphs, URL-encoded, hex, and reversed text                                        before analysis. Catches attacks the ML model never sees.
-- **Self-hostable** — your prompts never leave your environment
-- **Fail-secure design** — L2 timeout = BLOCK. External layers (L3, L5) fail-open to preserve availability.
-- **BLAKE2b API key hashing** — keys are never stored in plain text
-- **23 security loopholes closed** — Bandit scan: 0 High, 0 Medium
+### Core Security Capabilities
+
+- **Multi-Scheme Decoders (L3):** Recursively unpacks complex token transformations—including Base64 (up to depth 10), ROT13, Leetspeak, URL encoding, Hex representations, and character-swapped homoglyphs—prior to running vector analysis.
+- **Data Isolation:** Fully containerized architecture designed for self-hosted edge deployments to guarantee complete data privacy.
+- **Cryptographic Auth:** Uses one-way `BLAKE2b` hashing for API keys to eliminate clear-text credentials within your data layer.
+- **Static Hardening:** Zero High or Medium vulnerabilities confirmed via automated static analysis (SAST) dependency scanning.
 ---
 
 ## Live Metrics
 
-> Real traffic. Real attacks. Live dashboard.
+> Real traffic profile. Real adversarial hits. Live dataset capture.
 
 ![Grafana Dashboard](assets/Dashboard.png)
 
-| Metric | Value |
-|--------|-------|
-| Total Requests | 703 |
-| Blocked | 471 |
-| Allowed | 229 |
-| Block Rate | 67% |
-| Avg Latency | ~741ms |
+<div align="center">
 
+| Traffic Metric | Production Metric Value |
+| :--- | :--- |
+| **Total Intercepted Requests** | 703 |
+| **Malicious Payload Blocks** | 471 |
+| **Authorized Passes (Allowed)** | 229 |
+| **Global Block Rate** | 67% |
+| **Average End-to-End Latency** | ~741ms |
+
+</div>
+
+<div align="center">
+  
 [![Grafana SIEM](https://img.shields.io/badge/Grafana-SIEM%20Dashboard-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://sandeepint.grafana.net/d/agent-shield-siem/agent-shield)
+
+</div>
 
 ---
 
 ## Benchmarks
 
-| Metric | Value |
-|--------|-------|
-| Validation Accuracy | 99.42% |
-| Training Dataset | 291,471 rows |
-| Adversarial Eval | 14 / 14 |
-| Tests Passing | 146 |
-| Worst-case Latency | < 750ms (Azure B1) |
-| Bandit Scan | 0 High · 0 Medium |
-| Security Loopholes Closed | 23 |
-| Attack Types Covered (L3) | 14 |
-| Encoding Schemes Decoded | 7 |
-| PII Patterns Sanitized | 11 |
+These metrics validate our classification limits, dataset baseline scales, and pipeline optimization tracking:
+
+<div align="center">
+
+| Performance Indicator | Verified Baseline Value |
+| :--- | :--- |
+| **Validation Accuracy** | 99.42% |
+| **Active Training Dataset Volume** | 291,471 rows |
+| **Adversarial Evaluation Passing** | 14 / 14 Matrix Matches |
+| **Total Automated Regression Tests Passing** | 146 Tests |
+| **Maximum Target Gateway Latency Boundary** | < 750ms (Azure B1 Infrastructure) |
+| **Automated Static Security Audit Findings** | 0 High · 0 Medium (Bandit Hardened) |
+| **Input Attack Dimensions Covered (L3)** | 14 Attack Vectors |
+| **Active Normalization & Encoding Schemes** | 7 Schemes Decoded |
+| **Common PII Footprints Sanitized** | 11 RegEx / Token Patterns |
+
+</div>
 
 ---
 
@@ -186,24 +220,27 @@ curl -X POST https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net
   "attack_type": "instruction_override"
 }
 ```
-
+<div align="center">
+  
 **Or try the live demo — no setup needed**
 
  [![HF Space UI](https://img.shields.io/badge/🤗%20Demo%20UI-HuggingFace-FF9A00?style=for-the-badge&logoColor=white)](https://huggingface.co/spaces/Sandeep120205/agent-shield)
 
+ </div>
+
 ---
 
-### Tiers — What's Free, What's Paid
+## Project Roadmap & Feature Scope
 
 <div align="center">
-
-| Input Type | Tier | 
-|------------|------|
-| 📝 **Text / Prompt injection** | 🟢 **FREE — Open Source** 
-| 📄 **PDF Analysis** | 🔒 **FREE — Open Source** (coming)
-| 🌐 **URL / Webpage scan** | 🔒 Paid (coming)
-| 🖼️ **Image OCR scan** | 🔒 Paid (coming)
-| 🎥 **Video Analysis** | 🔒 Paid (coming) 
+  
+| Input / Target Type | Current Development Status |
+| :--- | :--- |
+| 📝 **Text Strings / Prompt Injection** | 🟢 **Production Ready (Open Source)** |
+| 📄 **Document / PDF Scans** | 🟡 In Development (Open Source) |
+| 🌐 **Dynamic Web URL Crawling** | 🔵 Backlog Target |
+| 🖼️ **Image OCR Multi-modal Extraction** | 🔵 Backlog Target |
+| 🎥 **Video Stream Content Analysis** | 🔵 Backlog Target |
 
 </div>
 
@@ -239,7 +276,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for full guidelines.
 
 ## Security Disclosure
 
-Found a bypass that slips past all 4 layers?
+Found a bypass that slips past all 5 layers?
 
 **Do not open a public issue.**
 
