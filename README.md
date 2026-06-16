@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.png" alt="Agent Shield" width="800"/>
+  <img src="https://raw.githubusercontent.com/Sandeep-int/agent-shield/main/assets/banner.png" alt="Agent Shield" width="800"/>
 </p>
 
 ---
@@ -43,43 +43,9 @@ Agent Shield is an open-source, high-performance security gate that stands in fr
 
 Every request passes through 5 distinct layers in sequence. One failure = blocked. No exceptions.
 
-```mermaid
-flowchart TD
-    A([Incoming prompt]) --> B
-
-    subgraph B[" Middleware "]
-        direction TB
-        B1[UTF-8 validation] --> B2[IP blocklist · Azure Table]
-        B2 --> B3[Rate limit · 120 req/min]
-        B3 --> B4[Auth · BLAKE2b compare]
-    end
-
-    B --> L1[L1 · Vigil Signatures · ~8ms]
-    L1 -->|match| BL1([BLOCK · L1_SIGNATURE])
-    L1 -->|pass| L2[L2 · DistilBERT ONNX · ~514ms]
-    L2 -->|match or timeout| BL2([BLOCK · L2_ONNX / TIMEOUT])
-    L2 -->|pass| L3[L3 · mDeBERTa HF Space · ~300ms]
-    L3 -->|match| BL3([BLOCK · L3_MDEBERTA])
-    L3 -->|pass or timeout| L4[L4 · Custom Rule Engine · ~2ms]
-    L4 -->|match| BL4([BLOCK · L4_CUSTOM_RULE])
-    L4 -->|pass| L5[L5 · Groq Llama3-70b · ~200ms]
-    L5 -. advisory .-> ADV([Log only · never blocks])
-    L5 --> SAN[sanitize_prompt · PII stripped]
-    SAN --> LOG[Azure Table log]
-    LOG --> ALLOW([✅ ALLOW · COMPREHENSIVE_PASS])
-
-    style BL1 fill:#d85a30,color:#fff,stroke:#993c1d
-    style BL2 fill:#d85a30,color:#fff,stroke:#993c1d
-    style BL3 fill:#d85a30,color:#fff,stroke:#993c1d
-    style BL4 fill:#d85a30,color:#fff,stroke:#993c1d
-    style ALLOW fill:#1d9e75,color:#fff,stroke:#0f6e56
-    style ADV fill:#f5f5f5,color:#555,stroke:#bbb,stroke-dasharray:4
-    style L5 fill:#faeeda,color:#633806,stroke:#ba7517
-    style L1 fill:#e1f5ee,color:#085041,stroke:#0f6e56
-    style L2 fill:#e1f5ee,color:#085041,stroke:#0f6e56
-    style L3 fill:#eeedfe,color:#3c3489,stroke:#534ab7
-    style L4 fill:#e1f5ee,color:#085041,stroke:#0f6e56
-```
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Sandeep-int/agent-shield/main/assets/detection-flow.png" alt="Detection Flow">
+</p>
 
 Any layer can terminate the request with a `BLOCK` verdict. The attack type and layer are logged to Azure Table for SIEM analysis.
 
@@ -111,7 +77,7 @@ Where each layer runs and why:
 Agent Shield integrates directly with an automated testing and red-teaming pipeline called Agent Strike.
 
 <p align="center">
-  <img src="assets/Agent Strike Loop.png" alt="Agent Shield">
+  <img src="https://raw.githubusercontent.com/Sandeep-int/agent-shield/main/assets/Agent%20Strike%20Loop.png" alt="Agent Shield">
 </p>
 
 ---
@@ -136,7 +102,7 @@ Agent Shield integrates directly with an automated testing and red-teaming pipel
 
 > Real traffic profile. Real adversarial hits. Live dataset capture.
 
-![Grafana Dashboard](assets/Dashboard.png)
+![Grafana Dashboard](https://raw.githubusercontent.com/Sandeep-int/agent-shield/main/assets/Dashboard.png)
 
 <div align="center">
 

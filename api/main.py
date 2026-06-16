@@ -164,7 +164,7 @@ limiter = Limiter(key_func=get_rate_limit_key)
 app = FastAPI(
     title="Agent Shield",
     description="Hardened Hybrid WAF & Prompt Injection Engine",
-    version="1.2.0"
+    version="1.0.5"
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, lambda r, e: JSONResponse(
