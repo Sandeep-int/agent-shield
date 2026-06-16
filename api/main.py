@@ -29,6 +29,7 @@ from detectors.l3_mdeberta import MDebertaL3
 
 from detectors.bert_classifier import MODEL_VERSION
 from api.auth import router as auth_router, validate_token
+from api.keys import router as keys_router
 from api.secrets_manager import get_secret
 
 # Import BERT classifier only if dependencies available
@@ -215,6 +216,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(keys_router)
 
 # Initialize detection engines with fallback for optional ML layer
 try:
