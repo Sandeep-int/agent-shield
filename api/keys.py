@@ -7,21 +7,30 @@ Routes:
 """
 import hashlib
 import logging
+<<<<<<< HEAD
 import os
+=======
+import secrets
+>>>>>>> c4f68bb (fix: expiry check, get_secret, atomic rotate via ETag)
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
+from azure.core import MatchConditions
+from azure.core.exceptions import ResourceModifiedError
+from api.secrets_manager import get_secret
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/keys", tags=["keys"])
 
+AZURE_CONNECTION_STRING = get_secret("AZURE_STORAGE_CONNECTION_STRING", "")
+
 
 def _get_table():
-    import os
     from azure.data.tables import TableServiceClient
-    conn = os.environ.get("AZURE_STORAGE_CONNECTION_STRING", "")
-    service = TableServiceClient.from_connection_string(conn)
+    if not AZURE_CONNECTION_STRING:
+        raise RuntimeError("AZURE_STORAGE_CONNECTION_STRING not set")
+    service = TableServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
     return service.get_table_client("agentshieldtokens")
 
 
@@ -45,6 +54,19 @@ def _get_entity(token: str):
         raise HTTPException(status_code=404, detail="Token not found")
 
 
+def _assert_active(entity: dict):
+    """Raise 403 if token is not active or is expired."""
+    if entity.get("status") != "active":
+        raise HTTPException(status_code=403, detail=f"Token is {entity.get('status')}")
+    expires_at = entity.get("expires_at", "")
+    if expires_at:
+        expiry_dt = datetime.fromisoformat(expires_at)
+        if datetime.now(timezone.utc) > expiry_dt:
+            raise HTTPException(status_code=403, detail="Token expired")
+
+
+# ── status ────────────────────────────────────────────────────────────────────
+
 @router.get("/status")
 async def key_status(request: Request):
     """Expiry + usage for the calling token"""
@@ -53,9 +75,7 @@ async def key_status(request: Request):
         raise HTTPException(status_code=401, detail="X-API-Key required")
 
     _, entity = _get_entity(token)
-
-    if entity.get("status") != "active":
-        raise HTTPException(status_code=403, detail=f"Token is {entity.get('status')}")
+    _assert_active(entity)
 
     expires_at = entity.get("expires_at", "")
     expiry_dt = datetime.fromisoformat(expires_at)
@@ -71,24 +91,21 @@ async def key_status(request: Request):
     })
 
 
+# ── rotate ────────────────────────────────────────────────────────────────────
+
 @router.post("/rotate")
 async def key_rotate(request: Request):
-    """Issue new token, revoke old. Returns new token once."""
-    import secrets
+    """Issue new token, revoke old. Atomic via ETag. Returns new token once."""
     token = request.headers.get("X-API-Key", "")
     if not token:
         raise HTTPException(status_code=401, detail="X-API-Key required")
 
     table, entity = _get_entity(token)
+    _assert_active(entity)
 
-    if entity.get("status") != "active":
-        raise HTTPException(status_code=403, detail=f"Token is {entity.get('status')}")
+    etag = entity.get("etag") or entity.metadata.get("etag") if hasattr(entity, "metadata") else None
 
-    # Revoke old
-    entity["status"] = "rotated"
-    table.upsert_entity(entity)
-
-    # Issue new
+    # Atomic: revoke old + insert new in one transaction
     new_token = f"as_tok_{secrets.token_urlsafe(32)}"
     new_hash = _hash(new_token)
     expiry = datetime.now(timezone.utc) + timedelta(days=90)
@@ -107,7 +124,20 @@ async def key_rotate(request: Request):
         "expires_at": expiry.isoformat(),
         "last_seen": datetime.now(timezone.utc).isoformat(),
     }
-    table.upsert_entity(new_entity)
+
+    try:
+        entity["status"] = "rotated"
+        table.update_entity(
+            entity,
+            mode="replace",
+            match_condition=MatchConditions.IfNotModified,
+        )
+        table.upsert_entity(new_entity)
+    except ResourceModifiedError:
+        raise HTTPException(status_code=409, detail="Concurrent rotation detected — retry")
+    except Exception as e:
+        logger.error(f"Rotate failed: {e}")
+        raise HTTPException(status_code=500, detail="Rotation failed")
 
     logger.info(f"Token rotated for {entity.get('username')}")
     return JSONResponse(content={
@@ -118,6 +148,8 @@ async def key_rotate(request: Request):
     })
 
 
+# ── revoke ────────────────────────────────────────────────────────────────────
+
 @router.delete("/revoke")
 async def key_revoke(request: Request):
     """Hard revoke calling token"""
@@ -126,8 +158,19 @@ async def key_revoke(request: Request):
         raise HTTPException(status_code=401, detail="X-API-Key required")
 
     table, entity = _get_entity(token)
-    entity["status"] = "revoked"
-    table.upsert_entity(entity)
+
+    try:
+        entity["status"] = "revoked"
+        table.update_entity(
+            entity,
+            mode="replace",
+            match_condition=MatchConditions.IfNotModified,
+        )
+    except ResourceModifiedError:
+        raise HTTPException(status_code=409, detail="Concurrent operation detected — retry")
+    except Exception as e:
+        logger.error(f"Revoke failed: {e}")
+        raise HTTPException(status_code=500, detail="Revoke failed")
 
     logger.info(f"Token revoked: {entity.get('username')}")
     return JSONResponse(content={"status": "revoked", "username": entity.get("username")})
