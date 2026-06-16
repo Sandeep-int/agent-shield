@@ -1,3 +1,5 @@
+  <img src="https://raw.githubusercontent.com/Sandeep-int/agent-shield/main/assets/banner.png" alt="Agent Shield" width="800"/>
+
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
