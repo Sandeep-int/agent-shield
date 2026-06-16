@@ -9,12 +9,13 @@
 Open source. Self-hosted. Production-grade.  
 Your data never leaves your environment.
 
-[![Live](https://img.shields.io/badge/Status-Live-brightgreen)](https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net/health)
-[![Accuracy](https://img.shields.io/badge/Accuracy-99.42%25-brightgreen)](#benchmarks)
-[![Bandit](https://img.shields.io/badge/Bandit-0%20High%200%20Medium-green)](#)
-[![PyPI](https://img.shields.io/pypi/v/agent-shield-int)](https://pypi.org/project/agent-shield-int/)
-[![License](https://img.shields.io/badge/License-MIT-blue)](#license)
-[![HuggingFace](https://img.shields.io/badge/Model-HuggingFace-orange)](https://huggingface.co/Sandeep120205/agent-shield-distilbert)
+[![API Status](https://img.shields.io/badge/API-Live-success?style=flat-square)](https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net/health)
+[![HF Space](https://img.shields.io/badge/HF%20Space-Active-blue?style=flat-square&logo=huggingface)](https://huggingface.co/spaces/Sandeep120205/agent-shield)
+[![PyPI](https://img.shields.io/badge/PyPI-agent--shield--int-orange?style=flat-square&logo=pypi)](https://pypi.org/project/agent-shield-int/)
+[![CI](https://img.shields.io/badge/CI-146%20tests%20passing-brightgreen?style=flat-square)](https://github.com/Sandeep-int/agent-shield/actions)
+[![Bandit](https://img.shields.io/badge/Bandit-0%20High%200%20Medium-brightgreen?style=flat-square)](https://github.com/Sandeep-int/agent-shield/actions)
+[![SonarCloud](https://img.shields.io/badge/SonarCloud-Quality%20Gate%20Passed-brightgreen?style=flat-square)](https://sonarcloud.io/project/overview?id=Sandeep-int_agent-shield)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
  
 ---
 
@@ -40,38 +41,49 @@ Every AI assistant and chatbot is a potential attack surface.
 ---
 
 ## The Solution
-Agent Shield is a **4-layer prompt injection detection API**
+Agent Shield is a **5-layer prompt injection detection API**
 
 
 ## How It Works
 
-Every request passes through 4 layers in order. One failure = blocked. No exceptions.
+Every request passes through 5 layers in order. One failure = blocked. No exceptions.
 
-```
-Incoming prompt
-       │
-       ▼
- ┌─────────────────────────────────────────────────────────┐
- │  UTF-8 Validation          → reject malformed input     │
- │  IP Blocklist (Azure)      → 403 if known bad actor     │
- │  Rate Limit (120/min)      → 429 on abuse               │
- │  Auth BLAKE2b compare      → 401 on bad key             │
- └─────────────────────────────────────────────────────────┘
-       │
-       ▼
-  L1  Vigil Signatures    ~8ms    ──→ BLOCK on match
-       │ PASS
-       ▼
-  L2  DistilBERT ONNX     ~514ms  ──→ BLOCK · timeout → BLOCK
-       │ PASS
-       ▼
-  L3  Custom Rule Engine  ~2ms    ──→ BLOCK on match
-       │ PASS
-       ▼
-  L4  Groq Llama3-70b     ~200ms  ──→ advisory (fire-and-forget)
-       │
-       ▼
-  sanitize_prompt() → Azure Table log → ✅ ALLOW
+```mermaid
+flowchart TD
+    A([Incoming prompt]) --> B
+
+    subgraph B[" Middleware "]
+        direction TB
+        B1[UTF-8 validation] --> B2[IP blocklist · Azure Table]
+        B2 --> B3[Rate limit · 120 req/min]
+        B3 --> B4[Auth · BLAKE2b compare]
+    end
+
+    B --> L1[L1 · Vigil Signatures · ~8ms]
+    L1 -->| match | BL1([BLOCK · L1_SIGNATURE])
+    L1 -->| pass | L2[L2 · DistilBERT ONNX · ~514ms]
+    L2 -->| match or timeout | BL2([BLOCK · L2_ONNX / TIMEOUT])
+    L2 -->| pass | L3[L3 · mDeBERTa HF Space · ~300ms]
+    L3 -->| match | BL3([BLOCK · L3_MDEBERTA])
+    L3 -->| pass or timeout | L4[L4 · Custom Rule Engine · ~2ms]
+    L4 -->| match | BL4([BLOCK · L4_CUSTOM_RULE])
+    L4 -->| pass | L5[L5 · Groq Llama3-70b · ~200ms]
+    L5 -. advisory .-> ADV([Log only · never blocks])
+    L5 --> SAN[sanitize_prompt · PII stripped]
+    SAN --> LOG[Azure Table log]
+    LOG --> ALLOW([✅ ALLOW · COMPREHENSIVE_PASS])
+
+    style BL1 fill:#d85a30,color:#fff,stroke:#993c1d
+    style BL2 fill:#d85a30,color:#fff,stroke:#993c1d
+    style BL3 fill:#d85a30,color:#fff,stroke:#993c1d
+    style BL4 fill:#d85a30,color:#fff,stroke:#993c1d
+    style ALLOW fill:#1d9e75,color:#fff,stroke:#0f6e56
+    style ADV fill:#f5f5f5,color:#555,stroke:#bbb,stroke-dasharray:4
+    style L5 fill:#faeeda,color:#633806,stroke:#ba7517
+    style L1 fill:#e1f5ee,color:#085041,stroke:#0f6e56
+    style L2 fill:#e1f5ee,color:#085041,stroke:#0f6e56
+    style L3 fill:#eeedfe,color:#3c3489,stroke:#534ab7
+    style L4 fill:#e1f5ee,color:#085041,stroke:#0f6e56
 ```
 
 Any layer can terminate the request with a `BLOCK` verdict. The attack type and layer are logged to Azure Table for SIEM analysis.
