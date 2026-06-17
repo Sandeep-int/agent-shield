@@ -106,15 +106,16 @@ def sanitize_prompt(prompt: str) -> str:
         prompt = pattern.sub(replacement, prompt)
     return prompt
 
-def log_to_azure(prompt, verdict, confidence, layer_hit, latency_ms, client_ip):
+def log_to_azure(prompt, verdict, confidence, layer_hit, latency_ms, client_ip, source="production"):
     try:
         from azure.data.tables import TableServiceClient
+        table_name = "agentstriketraffic" if source == "strike" else "agentshieldlogs"
         service = TableServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
-        table = service.get_table_client("agentshieldlogs")
+        table = service.get_table_client(table_name)
         try:
-            service.create_table("agentshieldlogs")
+            service.create_table(table_name)
         except Exception as e:
-            logger.debug(f"Table 'agentshieldlogs' already exists or creation failed: {e}")
+            logger.debug(f"Table '{table_name}' already exists or creation failed: {e}")
         entity = {
             "PartitionKey": verdict,
             "RowKey": str(time.time_ns()),
@@ -295,14 +296,15 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
     start_time = time.time()
     target_payload = req.prompt
     client_ip = get_remote_address(request) or "unknown"
+    source = "strike" if _is_internal_key(api_key) else "production"
     if is_ip_blocked(client_ip):
-        log_to_azure(target_payload, "BLOCK", 0.99, "IP_BLOCKLIST", 0.0, client_ip)
+        log_to_azure(target_payload, "BLOCK", 0.99, "IP_BLOCKLIST", 0.0, client_ip, source=source)
         raise HTTPException(status_code=403, detail="Access denied")
     try:
         vigil_result = scanner.scan(target_payload)
         if vigil_result.get("blocked", False):
             latency = (time.time() - start_time) * 1000
-            log_to_azure(target_payload, "BLOCK", 0.99, "L1_VIGIL_SIGNATURE", latency, client_ip)
+            log_to_azure(target_payload, "BLOCK", 0.99, "L1_VIGIL_SIGNATURE", latency, client_ip, source=source)
             return CheckResponse(
                 verdict="BLOCK",
                 confidence=0.99,
@@ -324,7 +326,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
             )
             if bert_result.get("is_injection"):
                 latency = (time.time() - start_time) * 1000
-                log_to_azure(target_payload, "BLOCK", bert_result["confidence"], "L2_ONNX_MODEL", latency, client_ip)
+                log_to_azure(target_payload, "BLOCK", bert_result["confidence"], "L2_ONNX_MODEL", latency, client_ip, source=source)
                 return CheckResponse(
                     verdict="BLOCK",
                     confidence=float(bert_result["confidence"]),
@@ -335,7 +337,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
         except asyncio.TimeoutError:
             latency = (time.time() - start_time) * 1000
             logger.error("L2 timeout — blocking as safe default")
-            log_to_azure(target_payload, "BLOCK", 0.99, "L2_TIMEOUT_BLOCK", latency, client_ip)
+            log_to_azure(target_payload, "BLOCK", 0.99, "L2_TIMEOUT_BLOCK", latency, client_ip, source=source)
             return CheckResponse(
                 verdict="BLOCK",
                 confidence=0.99,
@@ -346,7 +348,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
         except Exception as e:
             latency = (time.time() - start_time) * 1000
             logger.error(f"L2 Error: {e} — blocking as safe default")
-            log_to_azure(target_payload, "BLOCK", 0.99, "L2_ERROR_BLOCK", latency, client_ip)
+            log_to_azure(target_payload, "BLOCK", 0.99, "L2_ERROR_BLOCK", latency, client_ip, source=source)
             return CheckResponse(
                 verdict="BLOCK",
                 confidence=0.99,
@@ -363,7 +365,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
             if l3_mdeberta_result.get("is_injection"):
                 latency = (time.time() - start_time) * 1000
                 confidence = l3_mdeberta_result.get("confidence", 0.0)
-                log_to_azure(target_payload, "BLOCK", confidence, "L3_MDEBERTA", latency, client_ip)
+                log_to_azure(target_payload, "BLOCK", confidence, "L3_MDEBERTA", latency, client_ip, source=source)
                 return CheckResponse(
                     verdict="BLOCK",
                     confidence=confidence,
@@ -379,7 +381,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
         l3_result = l4_custom.check(target_payload)
         if not l3_result.get("passed"):
             total_latency = (time.time() - start_time) * 1000
-            log_to_azure(target_payload, "BLOCK", 0.99, "L4_CUSTOM_RULES", total_latency, client_ip)
+            log_to_azure(target_payload, "BLOCK", 0.99, "L4_CUSTOM_RULES", total_latency, client_ip, source=source)
             return CheckResponse(
                 verdict="BLOCK",
                 confidence=0.99,
@@ -394,7 +396,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
         l4_advisory = "L5_ADVISORY_ASYNC"
 
         total_latency = (time.time() - start_time) * 1000
-        log_to_azure(target_payload, "ALLOW", 0.00, "COMPREHENSIVE_PASS", total_latency, client_ip)
+        log_to_azure(target_payload, "ALLOW", 0.00, "COMPREHENSIVE_PASS", total_latency, client_ip, source=source)
         return CheckResponse(
             verdict="ALLOW",
             confidence=0.00,
@@ -442,9 +444,10 @@ async def metrics():
 async def feedback(request: Request, req: FeedbackRequest, api_key: str = Security(verify_api_key)):
    
     client_ip = get_remote_address(request) or "unknown"
+    source = "strike" if _is_internal_key(api_key) else "production"
 
     try:
-        log_to_azure(f"{req.prompt}\n[feedback_reason] {req.reason}", "MISSED", 0.00, "USER_REPORTED", 0.0, client_ip)
+        log_to_azure(f"{req.prompt}\n[feedback_reason] {req.reason}", "MISSED", 0.00, "USER_REPORTED", 0.0, client_ip, source=source)
     except Exception as e:
         logger.error(f"Feedback log failed: {e}")
         raise HTTPException(status_code=500, detail="Feedback logging failed.")
