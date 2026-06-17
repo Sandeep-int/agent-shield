@@ -85,6 +85,8 @@ async def verify_api_key(api_key: str = Security(api_key_header)):
         raise HTTPException(status_code=401, detail="Unauthorized. Valid X-API-Key required.")
     if _matches_valid_api_key(api_key):
         return api_key
+    if _is_internal_key(api_key):
+        return api_key
     token_data = validate_token(api_key)
     if token_data:
         return api_key
