@@ -413,11 +413,12 @@ async def health():
     return {"status": "ok"}
 
 @app.get("/metrics")
-async def metrics():  
+async def metrics(source: str = "production"):  
     try:
         from azure.data.tables import TableServiceClient
         service = TableServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
-        table = service.get_table_client("agentshieldlogs")
+        table_name = "agentstriketraffic" if source == "strike" else "agentshieldlogs"
+        table = service.get_table_client(table_name)
         entities = list(table.list_entities())
         total = len(entities)
         block_count = sum(1 for e in entities if e.get("verdict") == "BLOCK")
