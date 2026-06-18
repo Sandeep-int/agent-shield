@@ -416,7 +416,7 @@ async def health():
 @app.get("/metrics")
 async def metrics(
     source: Literal["production", "strike"] = "production",
-    x_api_key: str = Header(default=None)
+    x_api_key: str = Header(default="")
 ):  
     try:
         from azure.data.tables import TableServiceClient
