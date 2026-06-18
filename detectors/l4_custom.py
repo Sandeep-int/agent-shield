@@ -179,6 +179,7 @@ class CustomL4:
         ]
         for ch in invisible_chars:
             text = text.replace(ch, "")
+        text = re.sub(r"[\U000E0000-\U000E007F]", "", text)
         return text
 
     def _normalize_unicode(self, text: str) -> str:
