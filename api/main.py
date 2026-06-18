@@ -9,7 +9,8 @@ import logging
 import urllib.parse
 import unicodedata
 from datetime import datetime, timezone
-from fastapi import FastAPI, Request, HTTPException, Security
+from fastapi import FastAPI, Request, HTTPException, Security, Header
+from typing import Literal
 from fastapi.security import APIKeyHeader
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -413,10 +414,15 @@ async def health():
     return {"status": "ok"}
 
 @app.get("/metrics")
-async def metrics(source: str = "production"):  
+async def metrics(
+    source: Literal["production", "strike"] = "production",
+    x_api_key: str = Header(default=None)
+):  
     try:
         from azure.data.tables import TableServiceClient
         service = TableServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
+        if source == "strike" and not _is_internal_key(x_api_key):
+            raise HTTPException(status_code=403, detail="Strike metrics require internal key")
         table_name = "agentstriketraffic" if source == "strike" else "agentshieldlogs"
         table = service.get_table_client(table_name)
         entities = list(table.list_entities())
