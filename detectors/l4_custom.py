@@ -179,6 +179,7 @@ class CustomL4:
         ]
         for ch in invisible_chars:
             text = text.replace(ch, "")
+        text = "".join(c for c in text if not (0xE0000 <= ord(c) <= 0xE007F))
         return text
 
     def _normalize_unicode(self, text: str) -> str:
