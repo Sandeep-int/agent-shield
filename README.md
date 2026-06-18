@@ -118,7 +118,7 @@ Agent Shield integrates directly with an automated testing and red-teaming pipel
 
 <div align="center">
   
-[![Grafana SIEM](https://img.shields.io/badge/Grafana-SIEM%20Dashboard-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://sandeepint.grafana.net/d/agent-shield-siem/agent-shield)
+[![Grafana SIEM](https://img.shields.io/badge/Grafana-SIEM%20Dashboard-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://sandeepint.grafana.net/public-dashboards/c1d4de15f315412ba5dbc6c4c7be3cc9)
 
 </div>
 
