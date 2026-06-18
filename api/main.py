@@ -443,6 +443,8 @@ async def metrics(
             "avg_latency_ms": avg_latency,
             "layer_breakdown": layer_counts
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Metrics error: {e}")
         raise HTTPException(status_code=500, detail="Metrics unavailable")
