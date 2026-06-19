@@ -9,7 +9,11 @@ client = TestClient(app)
 TEST_API_KEY = os.environ.get("AGENT_SHIELD_API_KEY", "test-key")
 HEADERS = {"X-API-Key": TEST_API_KEY}
 
-@pytest.mark.xfail(reason="SlowAPI in-memory counter resets in CI")
+@pytest.mark.xfail(
+    condition=os.environ.get("GITHUB_ACTIONS") == "true",
+    reason="SlowAPI in-memory counter resets in CI",
+    strict=True
+)
 def test_rate_limit_blocks_after_120():
     for i in range(120):
         response = client.post("/v1/check", json={"prompt": "test"}, headers=HEADERS)
