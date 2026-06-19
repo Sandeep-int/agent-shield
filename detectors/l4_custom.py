@@ -188,7 +188,7 @@ class CustomL4:
         decoded_any = False
         for ch in text:
             cp = ord(ch)
-            if 0xE0001 <= cp <= 0xE007F:
+            if 0xE0020 <= cp <= 0xE007E:
                 result.append(chr(cp - 0xE0000))
                 decoded_any = True
             elif cp == 0xE0000:
@@ -378,7 +378,11 @@ class CustomL4:
         if tag_decoded != url_decoded:
             variants.append(tag_decoded)
             tag_cleaned = self._strip_zero_width(tag_decoded)
+            tag_cleaned = self._strip_rlo_bidi(tag_cleaned)
             variants.append(tag_cleaned)
+            tag_depunct = self._strip_punctuation_obfuscation(tag_cleaned)
+            if tag_depunct != tag_cleaned:
+                variants.append(tag_depunct)
         # Stage 3: Normalize Unicode
         unicode_norm = self._normalize_unicode(cleaned)
         variants.append(unicode_norm)
