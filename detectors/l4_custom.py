@@ -107,6 +107,8 @@ class CustomL4:
             r"actas(an?|the)?\w+",  # Concatenated form
             r"pretend\s+(to\s+be|you\s+are|you're|that\s+you're)\s+(an?|the|you're)?\s*\w+",
             r"roleplay\s+as",
+            r"hypothetical(ly)?\s+(response|scenario|situation|context)",
+            r"rewrite\s+.{0,50}(perspective|character|persona|role)",
             r"simulate\s+(a|an|the)?\s*(ai|model|system|assistant|human)",
             r"you('re|\s+are)\s+(no\s+longer|not)\s+(an?|the|bound\s+by)?\s*\w*",
             r"new\s+(persona|identity|role|character|mode)",
