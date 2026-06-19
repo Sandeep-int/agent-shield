@@ -182,6 +182,21 @@ class CustomL4:
         text = "".join(c for c in text if not (0xE0000 <= ord(c) <= 0xE007F))
         return text
 
+    def _decode_unicode_tags(self, text: str) -> str:
+        """Decode Unicode Tag chars (U+E0000-U+E007F) back to ASCII text"""
+        result = []
+        decoded_any = False
+        for ch in text:
+            cp = ord(ch)
+            if 0xE0001 <= cp <= 0xE007F:
+                result.append(chr(cp - 0xE0000))
+                decoded_any = True
+            elif cp == 0xE0000:
+                pass  # tag base char, skip
+            else:
+                result.append(ch)
+        return "".join(result) if decoded_any else text
+
     def _normalize_unicode(self, text: str) -> str:
         """Aggressive Unicode normalization"""
         # NFKC to normalize fullwidth and compatibility chars
@@ -358,6 +373,12 @@ class CustomL4:
         cleaned = self._strip_rlo_bidi(cleaned)
         variants.append(cleaned)
         
+        # Stage 2.5: Decode Unicode Tag chars → ASCII then check
+        tag_decoded = self._decode_unicode_tags(url_decoded)
+        if tag_decoded != url_decoded:
+            variants.append(tag_decoded)
+            tag_cleaned = self._strip_zero_width(tag_decoded)
+            variants.append(tag_cleaned)
         # Stage 3: Normalize Unicode
         unicode_norm = self._normalize_unicode(cleaned)
         variants.append(unicode_norm)
