@@ -164,6 +164,11 @@ def get_rate_limit_key(request: Request) -> str:
         return "internal-unlimited"
     return "global"
 
+_metrics_cache = {"production": None, "strike": None}
+_metrics_cache_time = {"production": 0.0, "strike": 0.0}
+_metrics_cache_lock = {"production": asyncio.Lock(), "strike": asyncio.Lock()}
+METRICS_CACHE_TTL_SECONDS = 30
+
 limiter = Limiter(key_func=get_rate_limit_key)
 
 app = FastAPI(
@@ -417,32 +422,46 @@ async def health():
 async def metrics(
     source: Literal["production", "strike"] = "production",
     x_api_key: str = Header(default="")
-):  
+):
     try:
-        from azure.data.tables import TableServiceClient
-        service = TableServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
         if source == "strike" and not _is_internal_key(x_api_key):
             raise HTTPException(status_code=403, detail="Strike metrics require internal key")
-        table_name = "agentstriketraffic" if source == "strike" else "agentshieldlogs"
-        table = service.get_table_client(table_name)
-        entities = list(table.list_entities())
-        total = len(entities)
-        block_count = sum(1 for e in entities if e.get("verdict") == "BLOCK")
-        allow_count = sum(1 for e in entities if e.get("verdict") == "ALLOW")
-        layer_counts = {}
-        for e in entities:
-            layer = e.get("layer_hit", "UNKNOWN")
-            layer_counts[layer] = layer_counts.get(layer, 0) + 1
-        latencies = [e.get("latency_ms", 0) for e in entities if e.get("latency_ms")]
-        avg_latency = round(sum(latencies) / len(latencies), 2) if latencies else 0
-        return {
-            "total_requests": total,
-            "block_count": block_count,
-            "allow_count": allow_count,
-            "block_rate_percent": round((block_count / total) * 100, 2) if total else 0,
-            "avg_latency_ms": avg_latency,
-            "layer_breakdown": layer_counts
-        }
+
+        now = time.monotonic()
+        if _metrics_cache[source] is not None and (now - _metrics_cache_time[source]) < METRICS_CACHE_TTL_SECONDS:
+            return _metrics_cache[source]
+
+        async with _metrics_cache_lock[source]:
+            now = time.monotonic()
+            if _metrics_cache[source] is not None and (now - _metrics_cache_time[source]) < METRICS_CACHE_TTL_SECONDS:
+                return _metrics_cache[source]
+
+            from azure.data.tables import TableServiceClient
+            service = TableServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
+            table_name = "agentstriketraffic" if source == "strike" else "agentshieldlogs"
+            table = service.get_table_client(table_name)
+            entities = list(table.list_entities())
+            total = len(entities)
+            block_count = sum(1 for e in entities if e.get("verdict") == "BLOCK")
+            allow_count = sum(1 for e in entities if e.get("verdict") == "ALLOW")
+            layer_counts = {}
+            for e in entities:
+                layer = e.get("layer_hit", "UNKNOWN")
+                layer_counts[layer] = layer_counts.get(layer, 0) + 1
+            latencies = [e.get("latency_ms", 0) for e in entities if e.get("latency_ms")]
+            avg_latency = round(sum(latencies) / len(latencies), 2) if latencies else 0
+            result = {
+                "total_requests": total,
+                "block_count": block_count,
+                "allow_count": allow_count,
+                "block_rate_percent": round((block_count / total) * 100, 2) if total else 0,
+                "avg_latency_ms": avg_latency,
+                "layer_breakdown": layer_counts
+            }
+
+            _metrics_cache[source] = result
+            _metrics_cache_time[source] = time.monotonic()
+            return result
     except HTTPException:
         raise
     except Exception as e:
