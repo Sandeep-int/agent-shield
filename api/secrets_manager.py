@@ -33,7 +33,7 @@ def get_secret(secret_name: str, default: str = "") -> str:
             return _get_aws_secret(secret_name, default)
         else:
             return os.environ.get(secret_name, default)
-    except Exception as e:
+    except Exception:
         logger.warning("Secret retrieval failed — falling back to env var")
         return os.environ.get(secret_name, default)
 
@@ -94,7 +94,7 @@ def rotate_secret(secret_name: str, new_value: str) -> bool:
         else:
             logger.warning("Secret rotation not supported for env backend")
             return False
-    except Exception as e:
+    except Exception:
         logger.error("Secret rotation failed")
         return False
 
@@ -110,7 +110,7 @@ def _rotate_azure_secret(secret_name: str, new_value: str) -> bool:
         client.set_secret(secret_name, new_value)
         logger.info("Rotated secret in Azure Key Vault")
         return True
-    except Exception as e:
+    except Exception:
         logger.error("Azure Key Vault rotation error")
         return False
 
@@ -129,6 +129,6 @@ def _rotate_aws_secret(secret_name: str, new_value: str) -> bool:
         client.update_secret(SecretId=secret_name, SecretString=new_value)
         logger.info("Rotated secret in AWS Secrets Manager")
         return True
-    except Exception as e:
+    except Exception:
         logger.error("AWS Secrets Manager rotation error")
         return False
