@@ -333,7 +333,7 @@ class CustomL4:
     def _strip_punctuation_obfuscation(self, text: str) -> str:
         """Remove punctuation used for obfuscation between letters - ULTRA AGGRESSIVE"""
         # Remove ALL separators between letters/digits (hyphens, spaces, dots, etc.)
-        text = re.sub(r"(?<=[a-zA-Z])[.\-_,;:|/\\\s\t\n'\"]+(?=[a-zA-Z])", "", text)
+        text = re.sub(r"(?<=[a-zA-Z])[.\-_,;:|/\\\s\t\n'\"]{1,50}(?=[a-zA-Z])", "", text)
         # Collapse multiple spaces
         text = re.sub(r"\s{2,}", " ", text)
         return text
