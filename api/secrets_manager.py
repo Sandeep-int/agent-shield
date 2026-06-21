@@ -14,7 +14,7 @@ try:
     env_path = Path(__file__).parent.parent / ".env"
     if env_path.exists():
         load_dotenv(env_path)
-        logger.info(f"Loaded .env from {env_path}")
+        logger.info("Loaded .env file")
 except ImportError:
     pass
 
@@ -33,8 +33,8 @@ def get_secret(secret_name: str, default: str = "") -> str:
             return _get_aws_secret(secret_name, default)
         else:
             return os.environ.get(secret_name, default)
-    except Exception as e:
-        logger.warning(f"Secret retrieval failed for {secret_name}: {e}, falling back to env var")
+    except Exception:
+        logger.warning("Secret retrieval failed — falling back to env var")
         return os.environ.get(secret_name, default)
 
 def _get_azure_secret(secret_name: str, default: str) -> str:
@@ -50,10 +50,10 @@ def _get_azure_secret(secret_name: str, default: str) -> str:
         credential = DefaultAzureCredential()
         client = SecretClient(vault_url=vault_url, credential=credential)
         secret = client.get_secret(secret_name)
-        logger.info(f"Retrieved secret '{secret_name}' from Azure Key Vault")
+        logger.info("Retrieved secret from Azure Key Vault")
         return secret.value
     except Exception as e:
-        logger.error(f"Azure Key Vault error: {e}")
+        logger.error("Azure Key Vault error — check credentials")
         raise
 
 def _get_aws_secret(secret_name: str, default: str) -> str:
@@ -70,7 +70,7 @@ def _get_aws_secret(secret_name: str, default: str) -> str:
         )
         
         response = client.get_secret_value(SecretId=secret_name)
-        logger.info(f"Retrieved secret '{secret_name}' from AWS Secrets Manager")
+        logger.info("Retrieved secret from AWS Secrets Manager")
         
         if 'SecretString' in response:
             return response['SecretString']
@@ -78,7 +78,7 @@ def _get_aws_secret(secret_name: str, default: str) -> str:
             import base64
             return base64.b64decode(response['SecretBinary']).decode('utf-8')
     except ClientError as e:
-        logger.error(f"AWS Secrets Manager error: {e}")
+        logger.error("AWS Secrets Manager error — check credentials")
         raise
 
 def rotate_secret(secret_name: str, new_value: str) -> bool:
@@ -92,10 +92,10 @@ def rotate_secret(secret_name: str, new_value: str) -> bool:
         elif SECRET_BACKEND == "aws": # nosec B105 
             return _rotate_aws_secret(secret_name, new_value)
         else:
-            logger.warning(f"Secret rotation not supported for env backend")
+            logger.warning("Secret rotation not supported for env backend")
             return False
-    except Exception as e:
-        logger.error(f"Secret rotation failed for {secret_name}: {e}")
+    except Exception:
+        logger.error("Secret rotation failed")
         return False
 
 def _rotate_azure_secret(secret_name: str, new_value: str) -> bool:
@@ -108,10 +108,10 @@ def _rotate_azure_secret(secret_name: str, new_value: str) -> bool:
         credential = DefaultAzureCredential()
         client = SecretClient(vault_url=vault_url, credential=credential)
         client.set_secret(secret_name, new_value)
-        logger.info(f"Rotated secret '{secret_name}' in Azure Key Vault")
+        logger.info("Rotated secret in Azure Key Vault")
         return True
-    except Exception as e:
-        logger.error(f"Azure Key Vault rotation error: {e}")
+    except Exception:
+        logger.error("Azure Key Vault rotation error")
         return False
 
 def _rotate_aws_secret(secret_name: str, new_value: str) -> bool:
@@ -127,8 +127,8 @@ def _rotate_aws_secret(secret_name: str, new_value: str) -> bool:
         )
         
         client.update_secret(SecretId=secret_name, SecretString=new_value)
-        logger.info(f"Rotated secret '{secret_name}' in AWS Secrets Manager")
+        logger.info("Rotated secret in AWS Secrets Manager")
         return True
-    except Exception as e:
-        logger.error(f"AWS Secrets Manager rotation error: {e}")
+    except Exception:
+        logger.error("AWS Secrets Manager rotation error")
         return False
