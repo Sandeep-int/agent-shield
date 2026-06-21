@@ -15,7 +15,7 @@ Open source · Production-grade · Self-hosted · 100% Private
 [![Metrics](https://img.shields.io/badge/Metrics-/metrics-4A90D9?style=for-the-badge)](https://agent-shield-chbxh2hkhxgucgax.eastasia-01.azurewebsites.net/metrics)
 
 [![PyPI](https://img.shields.io/badge/PyPI-agent--shield--int-3775A9?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/agent-shield-int/)
-[![CI](https://img.shields.io/github/actions/workflow/status/Sandeep-int/agent-shield/security-gate.yml?style=for-the-badge&logo=github&label=CI%20%7C%20146%20Tests&color=22c55e)](https://github.com/Sandeep-int/agent-shield/actions/workflows/security-gate.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/Sandeep-int/agent-shield/security-gate.yml?style=for-the-badge&logo=github&label=CI%20%7C%20156%20Tests&color=22c55e)](https://github.com/Sandeep-int/agent-shield/actions/workflows/security-gate.yml)
 [![SonarCloud](https://img.shields.io/badge/SonarCloud-Quality%20Gate%20✓-4E9BCD?style=for-the-badge&logo=sonarcloud&logoColor=white)](https://sonarcloud.io/project/overview?id=Sandeep-int_agent-shield)
 
 [![HF Space UI](https://img.shields.io/badge/🤗%20Demo%20UI-HuggingFace-FF9A00?style=for-the-badge&logoColor=white)](https://huggingface.co/spaces/Sandeep120205/agent-shield)
