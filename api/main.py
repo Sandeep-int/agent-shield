@@ -91,7 +91,7 @@ async def verify_api_key(api_key: str = Security(api_key_header)):
     token_data = validate_token(api_key)
     if token_data:
         return api_key
-    logger.warning(f"Unauthorized — invalid key: {api_key[:8]}...")
+    logger.warning("Unauthorized — invalid key attempt")
     raise HTTPException(status_code=401, detail="Unauthorized. Valid X-API-Key required.")
 
 _PII_REDACTIONS = (
