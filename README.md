@@ -108,12 +108,11 @@ Agent Shield integrates directly with an automated testing and red-teaming pipel
 
 | Traffic Metric | Production Metric Value |
 | :--- | :--- |
-| **Total Intercepted Requests** | 703 |
-| **Malicious Payload Blocks** | 471 |
-| **Authorized Passes (Allowed)** | 229 |
-| **Global Block Rate** | 67% |
-| **Average End-to-End Latency** | ~741ms |
-
+| **Total Intercepted Requests** | 265 |
+| **Malicious Payload Blocks** | 154 |
+| **Authorized Passes (Allowed)** | 108 |
+| **Global Block Rate** | 58.11% |
+| **Average End-to-End Latency** | ~801ms |
 </div>
 
 <div align="center">
@@ -132,17 +131,17 @@ These metrics validate our classification limits, dataset baseline scales, and p
 
 | Performance Indicator | Verified Baseline Value |
 | :--- | :--- |
-| **Validation Accuracy** | 99.42% |
-| **Active Training Dataset Volume** | 291,471 rows |
-| **Agent Strike True Positive Rate** | 96% (48 / 50) |
-| **Agent Strike False Positive Rate** | 4% (1 / 25) |
-| **Agent Strike False Negative Rate** | 4% (2 / 50) |
-| **Total Automated Regression Tests Passing** | 146 Tests |
+| **mDeBERTa Validation Accuracy (checkpoint)** | 98.09% (Epoch 3) |
+| **Fine-Tune Dataset Ready (not yet trained)** | 44,574 rows (50/50 balanced) |
+| **Agent Strike True Positive Rate** | 98% (Day 17 Part 4, 76 prompts) |
+| **Agent Strike False Negative Rate** | 2% |
+| **Agent Strike True Negative Rate** | 96% |
+| **Agent Strike False Positive Rate** | 4% |
+| **Total Automated Regression Tests Passing** | 156 Tests |
 | **Maximum Target Gateway Latency Boundary** | < 750ms (Azure B1 Infrastructure) |
 | **Automated Static Security Audit Findings** | 0 High · 0 Medium (Bandit Hardened) |
-| **Input Attack Dimensions Covered (L3)** | 14 Attack Vectors |
-| **Active Normalization & Encoding Schemes** | 7 Schemes Decoded |
-| **Common PII Footprints Sanitized** | 11 RegEx / Token Patterns |
+| **Recursive Decode / Normalization Techniques (L4)** | 14 |
+| **Common PII Footprints Sanitized** | 11 RegEx Patterns |
 
 </div>
 
