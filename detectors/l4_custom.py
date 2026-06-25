@@ -126,6 +126,8 @@ class CustomL4:
             r"\|\|.*?\|\|",
             r"(when|if)\s+(you|the\s+(ai|model|assistant))\s+(read|see|process|encounter)",
             r"execute\s+(the\s+)?(following|above|below|this|payload)",
+            r"first\s+letter\s+of\s+each\s+word",
+            r"(word\s+game|letter\s+game).{0,100}(spell|spells|encode|hidden\s+message)",
         ]
 
         # COMPREHENSIVE Unicode homoglyph map - ALL known variants
