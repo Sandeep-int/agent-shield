@@ -378,7 +378,10 @@ class CustomL4:
             "yankee": "y", "zulu": "z",
         }
         try:
-            words = re.split(r"[\s,.-]+", text.lower())
+            # Preserve x-ray as single token before splitting on hyphen
+            normalised = text.lower().replace("x-ray", "xray")
+            nato_map["xray"] = "x"
+            words = re.split(r"[\s,.]+", normalised)
             decoded = [nato_map.get(w, w) for w in words]
             result = "".join(decoded)
             # Only return decoded if majority of tokens were NATO words
@@ -435,15 +438,20 @@ class CustomL4:
             return text
 
     def _decode_ecoji(self, text: str) -> str:
-        """Strip Ecoji emoji encoding — extract any hidden ASCII payload"""
+        """Strip emoji payload encoding — remove emoji range chars, expose hidden ASCII.
+        Note: Full Ecoji v2 decode table not implemented. This strips the emoji
+        carrier characters and returns any interleaved ASCII payload for pattern
+        matching. Sufficient for detecting injection payloads hidden in emoji streams.
+        """
         try:
-            # Ecoji uses specific emoji range U+1F300-U+1FAFF
-            # Extract non-emoji chars as potential hidden payload
+            # Strip broad emoji ranges (Ecoji uses U+1F300-U+1FAFF as carriers)
+            # Any ASCII payload injected between emoji chars is exposed after strip
             result = "".join(
                 c for c in text
-                if ord(c) < 0x1F300 or ord(c) > 0x1FAFF
+                if ord(c) < 0x2600 or ord(c) > 0x1FAFF
             )
-            return result.strip() if result.strip() else text
+            stripped = result.strip()
+            return stripped if stripped else text
         except Exception as e:
             logger.debug(f"Ecoji decode error: {e}")
             return text
