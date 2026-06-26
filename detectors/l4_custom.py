@@ -365,6 +365,89 @@ class CustomL4:
         text = re.sub(r"\\u202[a-e]", "", text, flags=re.IGNORECASE)
         return text
 
+
+    def _decode_nato(self, text: str) -> str:
+        """Decode NATO phonetic alphabet to ASCII"""
+        nato_map = {
+            "alpha": "a", "bravo": "b", "charlie": "c", "delta": "d",
+            "echo": "e", "foxtrot": "f", "golf": "g", "hotel": "h",
+            "india": "i", "juliet": "j", "kilo": "k", "lima": "l",
+            "mike": "m", "november": "n", "oscar": "o", "papa": "p",
+            "quebec": "q", "romeo": "r", "sierra": "s", "tango": "t",
+            "uniform": "u", "victor": "v", "whiskey": "w", "x-ray": "x",
+            "yankee": "y", "zulu": "z",
+        }
+        try:
+            words = re.split(r"[\s,.-]+", text.lower())
+            decoded = [nato_map.get(w, w) for w in words]
+            result = "".join(decoded)
+            # Only return decoded if majority of tokens were NATO words
+            nato_hits = sum(1 for w in words if w in nato_map)
+            if nato_hits >= max(2, len(words) // 2):
+                return result
+        except Exception as e:
+            logger.debug(f"NATO decode error: {e}")
+        return text
+
+    def _decode_atbash(self, text: str) -> str:
+        """Decode Atbash cipher: A<->Z, B<->Y etc"""
+        try:
+            result = []
+            for ch in text:
+                if "a" <= ch <= "z":
+                    result.append(chr(ord("z") - (ord(ch) - ord("a"))))
+                elif "A" <= ch <= "Z":
+                    result.append(chr(ord("Z") - (ord(ch) - ord("A"))))
+                else:
+                    result.append(ch)
+            return "".join(result)
+        except Exception as e:
+            logger.debug(f"Atbash decode error: {e}")
+            return text
+
+    def _decode_zalgo(self, text: str) -> str:
+        """Strip Zalgo combining diacritic spam"""
+        try:
+            return "".join(
+                c for c in unicodedata.normalize("NFD", text)
+                if not unicodedata.combining(c)
+            )
+        except Exception as e:
+            logger.debug(f"Zalgo decode error: {e}")
+            return text
+
+    def _decode_braille(self, text: str) -> str:
+        """Decode Unicode Braille patterns to ASCII"""
+        braille_map = {
+            "⠁": "a", "⠃": "b", "⠉": "c", "⠙": "d", "⠑": "e",
+            "⠋": "f", "⠛": "g", "⠓": "h", "⠊": "i", "⠚": "j",
+            "⠅": "k", "⠇": "l", "⠍": "m", "⠝": "n", "⠕": "o",
+            "⠏": "p", "⠟": "q", "⠗": "r", "⠎": "s", "⠞": "t",
+            "⠥": "u", "⠧": "v", "⠺": "w", "⠭": "x", "⠽": "y",
+            "⠵": "z", "⠀": " ",
+        }
+        try:
+            if not any(c in braille_map for c in text):
+                return text
+            return "".join(braille_map.get(c, c) for c in text)
+        except Exception as e:
+            logger.debug(f"Braille decode error: {e}")
+            return text
+
+    def _decode_ecoji(self, text: str) -> str:
+        """Strip Ecoji emoji encoding — extract any hidden ASCII payload"""
+        try:
+            # Ecoji uses specific emoji range U+1F300-U+1FAFF
+            # Extract non-emoji chars as potential hidden payload
+            result = "".join(
+                c for c in text
+                if ord(c) < 0x1F300 or ord(c) > 0x1FAFF
+            )
+            return result.strip() if result.strip() else text
+        except Exception as e:
+            logger.debug(f"Ecoji decode error: {e}")
+            return text
+
     def _full_preprocessing(self, text: str) -> list[str]:
         """Complete preprocessing pipeline - returns multiple variants"""
         variants = [text]
