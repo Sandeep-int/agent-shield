@@ -10,7 +10,7 @@ import urllib.parse
 import unicodedata
 from datetime import datetime, timezone
 from fastapi import FastAPI, Request, HTTPException, Security, Header
-from typing import Literal
+from typing import Literal, Optional
 from fastapi.security import APIKeyHeader
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,6 +26,7 @@ from detectors.vigil_scanner import VigilScanner
 from detectors.l4_custom import CustomL4
 from detectors.l5_groq import GroqL5
 from detectors.l3_mdeberta import MDebertaL3
+from detectors.severity import get_severity
 
 
 from detectors.bert_classifier import MODEL_VERSION
@@ -290,6 +291,7 @@ class CheckResponse(BaseModel):
     verdict: str
     confidence: float
     layer_hit: str
+    severity: Optional[str] = None
     latency_ms: float
     details: dict
     model_version: str = MODEL_VERSION
@@ -317,6 +319,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
                 verdict="BLOCK",
                 confidence=0.99,
                 layer_hit="L1_VIGIL_SIGNATURE",
+                severity=get_severity("L1_VIGIL_SIGNATURE", 0.99),
                 latency_ms=latency,
                 details={"hits": vigil_result.get("hits", [])}
             )
@@ -339,6 +342,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
                     verdict="BLOCK",
                     confidence=float(bert_result["confidence"]),
                     layer_hit="L2_ONNX_MODEL",
+                    severity=get_severity("L2_ONNX_MODEL", float(bert_result["confidence"])),
                     latency_ms=latency,
                     details={"model_confidence": bert_result["confidence"]}
                 )
@@ -350,6 +354,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
                 verdict="BLOCK",
                 confidence=0.99,
                 layer_hit="L2_TIMEOUT_BLOCK",
+                severity=get_severity("L2_TIMEOUT_BLOCK", 0.99),
                 latency_ms=latency,
                 details={"reason": "L2 inference timeout — blocked by fail-safe policy"}
             )
@@ -361,6 +366,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
                 verdict="BLOCK",
                 confidence=0.99,
                 layer_hit="L2_ERROR_BLOCK",
+                severity=get_severity("L2_ERROR_BLOCK", 0.99),
                 latency_ms=latency,
                 details={"reason": f"L2 inference error — blocked by fail-safe policy: {str(e)[:100]}"}
             )
@@ -378,6 +384,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
                     verdict="BLOCK",
                     confidence=confidence,
                     layer_hit="L3_MDEBERTA",
+                    severity=get_severity("L3_MDEBERTA", confidence),
                     latency_ms=latency,
                     details={"model_confidence": confidence}
                 )
@@ -394,6 +401,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
                 verdict="BLOCK",
                 confidence=0.99,
                 layer_hit="L4_CUSTOM_RULES",
+                severity=get_severity("L4_CUSTOM_RULES", 0.99),
                 latency_ms=total_latency,
                 details={"reason": l3_result.get("reason")}
             )
@@ -409,6 +417,7 @@ async def check_prompt(request: Request, req: CheckRequest, api_key: str = Secur
             verdict="ALLOW",
             confidence=0.00,
             layer_hit="COMPREHENSIVE_PASS",
+            severity=get_severity("COMPREHENSIVE_PASS", 0.00),
             latency_ms=total_latency,
             details={"all_checks": "verified_clean", "l4_advisory": l4_advisory},
             model_version=MODEL_VERSION
