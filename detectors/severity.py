@@ -1,4 +1,7 @@
-def get_severity(layer: str, confidence: float = None) -> str:
+from typing import Optional
+
+
+def get_severity(layer: str, confidence: Optional[float] = None) -> Optional[str]:
     """
     Map detection layer + confidence to severity level.
     Returns None for ALLOW/pass-through (no threat detected).
