@@ -274,3 +274,7 @@ Built by [Sandeep S](https://github.com/Sandeep-int) &nbsp;|&nbsp;
 **Agent Shield gets stronger every day. So do attackers. That's the point.**
 
 </div>
+
+## Severity Scoring
+Each verdict includes severity: LOW/MEDIUM/HIGH.
+Based on layer_hit + confidence score.
