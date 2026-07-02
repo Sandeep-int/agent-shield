@@ -129,6 +129,7 @@ class CustomL4:
             r"first\s+letter\s+of\s+each\s+word",
             r"(word\s+game|letter\s+game).{0,100}(spell|spells|encode|hidden\s+message)",
             r"assistant:\s*\[.{0,60}\]\s*user:.{0,150}\b(repeat|print|say|tell\s+me|output)\b",
+            r"ignore\s+(the\s+rest\s+of\s+this\s+data\b|all\s+(the\s+)?(above|previous)\b).{0,50}\b(print|say|repeat|output)\b",
         ]
 
         # COMPREHENSIVE Unicode homoglyph map - ALL known variants
